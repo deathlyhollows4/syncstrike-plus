@@ -1,0 +1,170 @@
+# SyncStrike — Database & Backend Guide
+
+This project runs on **Lovable Cloud** (managed Supabase). No external accounts required.
+
+---
+
+## 1. Project structure
+
+**Auth**: Email + password with email verification. Leaked-password (HIBP) check ON.
+**Roles**: `admin` and `team_member`. Roles live in a SEPARATE `user_roles` table
+(never on `profiles`) to prevent privilege-escalation attacks.
+
+### Seeded admin
+- Email: `vidhantomar2004@gmail.com`
+- Password: NOT in the codebase. Set it on first login via **Forgot password** on the
+  sign-in page. The reset email goes to that address.
+- The `handle_new_user()` trigger auto-grants the `admin` role to that exact email;
+  every other signup gets `team_member`.
+
+---
+
+## 2. Tables
+
+| Table | Purpose | Key columns |
+|---|---|---|
+| `profiles` | Public profile per user | `id` (= auth.users.id), `email`, `display_name`, `is_blocked`, `last_seen_at` |
+| `user_roles` | Role membership | `user_id`, `role` (`admin` \| `team_member`) |
+| `teams` | Team definitions | `name`, `description`, `owner_id` |
+| `team_members` | User ↔ team join | `team_id`, `user_id` |
+| `tasks` | Tasks + lifecycle | `title`, `status` (pending/in_progress/completed/blocked), `priority`, `progress`, `deadline`, `scheduled_for`, `completion_description`, `blocker_reason`, `creator_id`, `assignee_id`, `team_id` |
+| `notifications` | Per-user notifications | `recipient_id`, `type`, `title`, `body`, `is_read`, `is_urgent`, `task_id` |
+| `chat_messages` | Per-team chat | `team_id`, `sender_id`, `body` |
+
+### Important constraints (enforced by trigger, not CHECK)
+- Marking a task `completed` requires `completion_description` ≥ 5 chars
+- Marking a task `blocked` requires `blocker_reason` ≥ 3 chars
+- `completed_at` is set automatically when status flips to `completed`
+
+### Auto behavior
+- **Signup trigger** (`handle_new_user`) creates a `profiles` row and assigns the
+  initial role.
+- **Blocker trigger** (`notify_on_blocker`) creates urgent notifications for the
+  task creator and every admin when a task is moved to `blocked`.
+
+### Realtime
+`notifications`, `chat_messages`, and `tasks` are published on the `supabase_realtime`
+channel. The frontend subscribes via `supabase.channel(...).on('postgres_changes', ...)`.
+
+---
+
+## 3. Row-Level Security (RLS) — plain English
+
+All tables have RLS enabled. RLS uses three security-definer helper functions:
+`has_role(uid, role)`, `is_admin(uid)`, `is_team_member(uid, team_id)`.
+
+| Table | Who can read | Who can write |
+|---|---|---|
+| `profiles` | Any signed-in user | User updates own; admin updates/deletes any |
+| `user_roles` | Self + admins | Admins only |
+| `teams` | Members + owner + admins | Admins only |
+| `team_members` | Members of that team + admins | Admins only |
+| `tasks` | Creator + assignee + team members + admins | Creator/assignee can update; admin can do everything |
+| `notifications` | Recipient + admins | Recipient marks read; users insert only for themselves; admin for anyone |
+| `chat_messages` | Team members + admins | Sender posts (must be team member); sender or admin deletes |
+
+### Why a separate `user_roles` table?
+Putting `role` directly on `profiles` allows a user to update their own profile and
+escalate themselves to admin via any update endpoint. We forbid that by storing
+roles in a separate table that ONLY admins can write to, and we check membership
+via a `SECURITY DEFINER` function so RLS doesn't recurse.
+
+---
+
+## 4. Managing users (admin)
+
+### From the app
+Sign in as admin, open **Admin** in the sidebar. You can:
+- Search users
+- **Block / unblock** (sets `profiles.is_blocked` — the frontend can read this and
+  refuse access; you can extend by checking `is_blocked` in RLS too)
+- **Delete** a user's profile + all their data (cascade)
+- See basic stats (total users, total tasks, blocked tasks)
+
+### From Lovable Cloud (backend dashboard)
+- View Backend → Users to manage `auth.users`, send password reset emails,
+  delete the auth row, etc.
+- View Backend → Database → Tables to inspect any table directly.
+
+---
+
+## 5. Example SQL
+
+```sql
+-- Promote a user to admin
+INSERT INTO public.user_roles (user_id, role)
+SELECT id, 'admin' FROM auth.users WHERE email = 'someone@example.com'
+ON CONFLICT DO NOTHING;
+
+-- Demote
+DELETE FROM public.user_roles
+WHERE role = 'admin'
+  AND user_id = (SELECT id FROM auth.users WHERE email = 'someone@example.com');
+
+-- Block a user
+UPDATE public.profiles SET is_blocked = true
+WHERE email = 'spam@example.com';
+
+-- All overdue, in-progress tasks
+SELECT * FROM public.tasks
+WHERE deadline < now() AND status IN ('pending','in_progress');
+
+-- Tasks completed in the last 7 days, per user
+SELECT p.email, COUNT(*) AS done
+FROM public.tasks t
+JOIN public.profiles p ON p.id = t.assignee_id
+WHERE t.completed_at >= now() - interval '7 days'
+GROUP BY p.email ORDER BY done DESC;
+```
+
+---
+
+## 6. Setup & deployment
+
+### Local dev
+1. Open the project in Lovable — backend is auto-provisioned on first load.
+2. The `.env` is auto-managed (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`).
+   Do not edit it.
+3. The Supabase JS client is at `src/integrations/supabase/client.ts` (auto-generated;
+   never edit). Import it as:
+   ```ts
+   import { supabase } from "@/integrations/supabase/client";
+   ```
+
+### Auth flow
+- Signup: `/signup` → user gets verification email → click link → `/dashboard`
+- Login: `/login` (email + password)
+- Forgot: `/forgot-password` → email link → `/reset-password` → set new password
+
+### Deployment
+Click **Publish** at the top right of the Lovable editor.
+- Frontend → published to `*.lovable.app`
+- Backend → already live (Lovable Cloud)
+- Custom domain → Project settings → Domains
+
+---
+
+## 7. Files of interest
+
+```
+src/
+├── routes/
+│   ├── __root.tsx              # Root layout, head metadata, AuthProvider, Toaster
+│   ├── index.tsx               # Public landing page
+│   ├── login.tsx, signup.tsx, forgot-password.tsx, reset-password.tsx
+│   ├── _app.tsx                # Auth-guarded layout (sidebar + topbar)
+│   └── _app/
+│       ├── dashboard.tsx       # Chrono-Dashboard (day/week/month calendar)
+│       ├── tasks.tsx           # Task list + filters
+│       ├── teams.tsx           # (next iteration)
+│       ├── chat.tsx            # (next iteration)
+│       ├── analytics.tsx       # 7-day completion trend, totals
+│       ├── profile.tsx         # Account + change password
+│       └── admin.tsx           # Admin dashboard (block/delete users)
+├── components/
+│   ├── AuthShell.tsx, Logo.tsx, NotificationBell.tsx
+│   └── TaskCreateModal.tsx, TaskDetailModal.tsx
+├── context/AuthContext.tsx     # Session + role state, listener-first pattern
+├── lib/audio.ts                # Urgent blocker beep (Web Audio API)
+└── types/task.ts
+```

@@ -14,16 +14,285 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chat_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          sender_id: string
+          team_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          sender_id: string
+          team_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          is_urgent: boolean
+          recipient_id: string
+          task_id: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          is_urgent?: boolean
+          recipient_id: string
+          task_id?: string | null
+          title: string
+          type?: Database["public"]["Enums"]["notification_type"]
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          is_urgent?: boolean
+          recipient_id?: string
+          task_id?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          email: string
+          id: string
+          is_blocked: boolean
+          last_seen_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email: string
+          id: string
+          is_blocked?: boolean
+          last_seen_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          id?: string
+          is_blocked?: boolean
+          last_seen_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          assignee_id: string | null
+          blocker_reason: string | null
+          completed_at: string | null
+          completion_description: string | null
+          created_at: string
+          creator_id: string
+          deadline: string | null
+          description: string | null
+          id: string
+          priority: Database["public"]["Enums"]["task_priority"]
+          progress: number
+          scheduled_for: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          team_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          blocker_reason?: string | null
+          completed_at?: string | null
+          completion_description?: string | null
+          created_at?: string
+          creator_id: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          progress?: number
+          scheduled_for?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          team_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          blocker_reason?: string | null
+          completed_at?: string | null
+          completion_description?: string | null
+          created_at?: string
+          creator_id?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          progress?: number
+          scheduled_for?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          team_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          id: string
+          joined_at: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_team_member: {
+        Args: { _team_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "team_member"
+      notification_type:
+        | "blocker"
+        | "nudge"
+        | "info"
+        | "task_assigned"
+        | "task_completed"
+      task_priority: "low" | "medium" | "high" | "urgent"
+      task_status: "pending" | "in_progress" | "completed" | "blocked"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +419,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "team_member"],
+      notification_type: [
+        "blocker",
+        "nudge",
+        "info",
+        "task_assigned",
+        "task_completed",
+      ],
+      task_priority: ["low", "medium", "high", "urgent"],
+      task_status: ["pending", "in_progress", "completed", "blocked"],
+    },
   },
 } as const

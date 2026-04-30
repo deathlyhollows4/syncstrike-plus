@@ -16,7 +16,6 @@ import {
   MessageSquare,
   Shield,
   LogOut,
-  User as UserIcon,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Logo } from "@/components/Logo";

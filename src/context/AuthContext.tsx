@@ -23,6 +23,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchRole = async (uid: string) => {
+    // First: enforce block status. If blocked, terminate the session immediately.
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("is_blocked")
+      .eq("id", uid)
+      .maybeSingle();
+    if (prof?.is_blocked) {
+      await supabase.auth.signOut();
+      setRole(null);
+      return;
+    }
+
     const { data } = await supabase
       .from("user_roles")
       .select("role")

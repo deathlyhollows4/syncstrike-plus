@@ -19,15 +19,17 @@ interface Row {
 }
 
 function AdminPage() {
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, loading, role } = useAuth();
   const navigate = useNavigate();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [q, setQ] = useState("");
   const [stats, setStats] = useState({ users: 0, tasks: 0, blocked: 0 });
 
+  // Redirect non-admins as soon as role is known. Render nothing until then —
+  // never expose any admin UI or trigger any admin queries for non-admins.
   useEffect(() => {
-    if (!loading && !isAdmin) navigate({ to: "/dashboard" });
-  }, [loading, isAdmin, navigate]);
+    if (!loading && role !== null && !isAdmin) navigate({ to: "/dashboard" });
+  }, [loading, role, isAdmin, navigate]);
 
   const load = async () => {
     const [{ data: profiles }, { data: roles }, { count: tcount }, { count: bcount }] = await Promise.all([

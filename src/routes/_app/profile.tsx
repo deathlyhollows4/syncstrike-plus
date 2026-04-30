@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Users } from "lucide-react";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
@@ -9,8 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { UserAvatar } from "@/components/UserAvatar";
+import { invalidateProfile } from "@/hooks/useProfiles";
 
-export const Route = createFileRoute("/_app/profile")({ component: ProfilePage });
+const profileSearchSchema = z.object({
+  id: z.string().uuid().optional(),
+});
+
+export const Route = createFileRoute("/_app/profile")({
+  component: ProfilePage,
+  validateSearch: profileSearchSchema,
+});
 
 interface MyTeam {
   id: string;
@@ -19,6 +29,7 @@ interface MyTeam {
 
 function ProfilePage() {
   const { user, role, isAdmin } = useAuth();
+  const search = Route.useSearch();
   const [pwd, setPwd] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -33,18 +44,13 @@ function ProfilePage() {
     inProgress: 0,
     blocked: 0,
   });
-  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
-  const [isOwner, setIsOwner] = useState(false);
+
+  const targetId = search.id ?? user?.id ?? null;
+  const isOwner = !!user && targetId === user.id;
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !targetId) return;
     (async () => {
-      // Allow viewing another user's profile via ?id=<userId>
-      const params = new URLSearchParams(window.location.search);
-      const targetId = params.get("id") ?? user.id;
-      setViewingUserId(targetId);
-      setIsOwner(targetId === user.id);
-
       const { data: p } = await supabase
         .from("profiles")
         .select("display_name, avatar_url")
@@ -65,14 +71,13 @@ function ProfilePage() {
         setTeams([]);
       }
 
-      // Fetch personal task statistics for the viewed user
       const { data: tasks } = await supabase
         .from("tasks")
         .select("status")
         .or(`creator_id.eq.${targetId},assignee_id.eq.${targetId}`);
       if (tasks) {
         const stats = (tasks as Array<{ status?: string }>).reduce(
-          (acc: { total: number; completed: number; inProgress: number; blocked: number }, task) => {
+          (acc, task) => {
             acc.total++;
             if (task.status === "completed") acc.completed++;
             else if (task.status === "in_progress") acc.inProgress++;
@@ -84,7 +89,7 @@ function ProfilePage() {
         setTaskStats(stats);
       }
     })();
-  }, [user]);
+  }, [user, targetId]);
 
   const updatePwd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,19 +105,28 @@ function ProfilePage() {
 
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !targetId) return;
     if (!isOwner && !isAdmin) return toast.error("Permission denied");
+
+    const trimmedUrl = avatarUrl.trim();
+    if (trimmedUrl && !/^https:\/\/.+/i.test(trimmedUrl)) {
+      return toast.error("Avatar URL must start with https://");
+    }
+    if (trimmedUrl.length > 500) {
+      return toast.error("Avatar URL is too long (max 500 chars)");
+    }
+
     setSavingProfile(true);
-    const targetId = viewingUserId ?? user.id;
     const { error } = await supabase
       .from("profiles")
       .update({
         display_name: displayName.trim() || null,
-        avatar_url: avatarUrl.trim() || null,
+        avatar_url: trimmedUrl || null,
       })
       .eq("id", targetId);
     setSavingProfile(false);
     if (error) return toast.error(error.message);
+    invalidateProfile(targetId);
     toast.success("Profile updated");
   };
 
@@ -123,14 +137,20 @@ function ProfilePage() {
         <h1 className="font-display text-3xl font-bold mt-1">Profile</h1>
       </div>
 
-      <Card className="p-6 surface border-border/60 space-y-3">
-        <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Email</p>
-          <p className="font-medium">{user?.email}</p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Role</p>
-          <p className="font-medium capitalize">{role}</p>
+      <Card className="p-6 surface border-border/60">
+        <div className="flex items-center gap-4">
+          <UserAvatar
+            url={avatarUrl}
+            name={displayName}
+            email={user?.email}
+            size="lg"
+          />
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Email</p>
+            <p className="font-medium truncate">{user?.email}</p>
+            <p className="mt-1 text-xs uppercase tracking-wider text-muted-foreground">Role</p>
+            <p className="font-medium capitalize">{role}</p>
+          </div>
         </div>
       </Card>
 
@@ -144,7 +164,7 @@ function ProfilePage() {
                 id="dn"
                 value={displayName}
                 maxLength={80}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
+                onChange={(e) => setDisplayName(e.target.value)}
                 className="mt-1.5"
               />
             </div>
@@ -155,9 +175,12 @@ function ProfilePage() {
                 value={avatarUrl}
                 placeholder="https://…"
                 maxLength={500}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAvatarUrl(e.target.value)}
+                onChange={(e) => setAvatarUrl(e.target.value)}
                 className="mt-1.5"
               />
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Paste any public image URL (must start with <code>https://</code>).
+              </p>
             </div>
             <Button
               type="submit"
@@ -173,10 +196,6 @@ function ProfilePage() {
             <div>
               <p className="text-xs uppercase tracking-wider text-muted-foreground">Display name</p>
               <p className="font-medium">{displayName || "—"}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Avatar</p>
-              <p className="text-sm text-muted-foreground break-words">{avatarUrl || "—"}</p>
             </div>
           </div>
         )}
@@ -239,7 +258,7 @@ function ProfilePage() {
                 type="password"
                 minLength={8}
                 value={pwd}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPwd(e.target.value)}
+                onChange={(e) => setPwd(e.target.value)}
                 className="mt-1.5"
               />
             </div>

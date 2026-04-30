@@ -124,7 +124,7 @@ function Landing() {
       <footer className="border-t border-border/50 py-10">
         <div className="mx-auto max-w-7xl px-6 flex flex-wrap items-center justify-between gap-4">
           <Logo />
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} SyncStrike. Built on Lovable Cloud.</p>
+          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} SyncStrike.</p>
         </div>
       </footer>
     </div>

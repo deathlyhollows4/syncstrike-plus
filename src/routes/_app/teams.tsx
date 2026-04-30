@@ -518,7 +518,7 @@ function AddMemberDialog({
       }
       const { data } = await supabase
         .from("profiles")
-        .select("id, email, display_name")
+        .select("id, email, display_name, avatar_url")
         .or(`email.ilike.%${q}%,display_name.ilike.%${q}%`)
         .limit(10);
       setResults((data as Profile[]) ?? []);
@@ -564,6 +564,12 @@ function AddMemberDialog({
                 const already = existingMemberIds.includes(p.id);
                 return (
                   <div key={p.id} className="flex items-center gap-3 p-3">
+                    <UserAvatar
+                      url={p.avatar_url}
+                      name={p.display_name}
+                      email={p.email}
+                      size="sm"
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">
                         {p.display_name ?? p.email.split("@")[0]}

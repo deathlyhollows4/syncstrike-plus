@@ -14,8 +14,12 @@ import { format } from "date-fns";
 export const Route = createFileRoute("/_app/admin")({ component: AdminPage });
 
 interface Row {
-  id: string; email: string; display_name: string | null;
-  is_blocked: boolean; created_at: string; role: "admin" | "team_member" | null;
+  id: string;
+  email: string;
+  display_name: string | null;
+  is_blocked: boolean;
+  created_at: string;
+  role: "admin" | "team_member" | null;
 }
 
 function AdminPage() {
@@ -32,7 +36,13 @@ function AdminPage() {
   }, [loading, role, isAdmin, navigate]);
 
   const load = async () => {
-    const [{ data: profiles }, { data: roles }, { count: tcount }, { count: bcount }, { count: teamCount }] = await Promise.all([
+    const [
+      { data: profiles },
+      { data: roles },
+      { count: tcount },
+      { count: bcount },
+      { count: teamCount },
+    ] = await Promise.all([
       supabase.from("profiles").select("id, email, display_name, is_blocked, created_at"),
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("tasks").select("*", { count: "exact", head: true }),
@@ -40,41 +50,57 @@ function AdminPage() {
       supabase.from("teams").select("*", { count: "exact", head: true }),
     ]);
     const roleMap = new Map((roles ?? []).map((r: any) => [r.user_id, r.role]));
-    const merged: Row[] = (profiles ?? []).map((p: any) => ({ ...p, role: roleMap.get(p.id) ?? null }));
+    const merged: Row[] = (profiles ?? []).map((p: any) => ({
+      ...p,
+      role: roleMap.get(p.id) ?? null,
+    }));
     setRows(merged);
-    setStats({ users: merged.length, tasks: tcount ?? 0, blocked: bcount ?? 0, teams: teamCount ?? 0 });
+    setStats({
+      users: merged.length,
+      tasks: tcount ?? 0,
+      blocked: bcount ?? 0,
+      teams: teamCount ?? 0,
+    });
   };
-  useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
+  useEffect(() => {
+    if (isAdmin) load();
+  }, [isAdmin]);
 
   const promoteUser = async (r: Row) => {
     if (!confirm(`Promote ${r.email} to admin?`)) return;
-    const { error } = await supabase.from("user_roles").insert({ user_id: r.id, role: 'admin' });
+    const { error } = await supabase.from("user_roles").insert({ user_id: r.id, role: "admin" });
     if (error) {
       // If already exists, show a friendly message
-      if (error.message && error.message.toLowerCase().includes('duplicate')) {
-        toast.error('User already has the admin role');
+      if (error.message && error.message.toLowerCase().includes("duplicate")) {
+        toast.error("User already has the admin role");
       } else {
         toast.error(error.message);
       }
       return;
     }
-    toast.success('User promoted to admin');
+    toast.success("User promoted to admin");
     load();
   };
 
   const demoteUser = async (r: Row) => {
     if (!confirm(`Remove admin role from ${r.email}?`)) return;
-    const { error } = await supabase.from("user_roles").delete().match({ user_id: r.id, role: 'admin' });
+    const { error } = await supabase
+      .from("user_roles")
+      .delete()
+      .match({ user_id: r.id, role: "admin" });
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success('Admin role removed');
+    toast.success("Admin role removed");
     load();
   };
 
   const toggleBlock = async (r: Row) => {
-    const { error } = await supabase.from("profiles").update({ is_blocked: !r.is_blocked }).eq("id", r.id);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_blocked: !r.is_blocked })
+      .eq("id", r.id);
     if (error) return toast.error(error.message);
     toast.success(r.is_blocked ? "User unblocked" : "User blocked");
     load();
@@ -92,9 +118,11 @@ function AdminPage() {
 
   if (!isAdmin) return null;
 
-  const filtered = (rows ?? []).filter((r) =>
-    q === "" || r.email.toLowerCase().includes(q.toLowerCase()) ||
-    (r.display_name ?? "").toLowerCase().includes(q.toLowerCase())
+  const filtered = (rows ?? []).filter(
+    (r) =>
+      q === "" ||
+      r.email.toLowerCase().includes(q.toLowerCase()) ||
+      (r.display_name ?? "").toLowerCase().includes(q.toLowerCase()),
   );
 
   return (
@@ -123,13 +151,20 @@ function AdminPage() {
           <h2 className="font-display text-lg font-semibold">Users</h2>
           <div className="relative max-w-xs flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="pl-9 h-9" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search…"
+              className="pl-9 h-9"
+            />
           </div>
         </div>
 
         {!rows ? (
           <div className="p-6 space-y-2">
-            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12" />)}
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-12" />
+            ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
@@ -155,30 +190,50 @@ function AdminPage() {
                       <p className="text-xs text-muted-foreground">{r.email}</p>
                     </td>
                     <td className="p-3">
-                      <Badge className={r.role === "admin"
-                        ? "bg-gold-shine text-[oklch(0.16_0.02_75)] border-0"
-                        : "bg-muted text-muted-foreground"}>
+                      <Badge
+                        className={
+                          r.role === "admin"
+                            ? "bg-gold-shine text-[oklch(0.16_0.02_75)] border-0"
+                            : "bg-muted text-muted-foreground"
+                        }
+                      >
                         {r.role ?? "—"}
                       </Badge>
                     </td>
                     <td className="p-3">
-                      {r.is_blocked
-                        ? <Badge variant="destructive">Blocked</Badge>
-                        : <Badge className="bg-success/20 text-success border border-success/40">Active</Badge>}
+                      {r.is_blocked ? (
+                        <Badge variant="destructive">Blocked</Badge>
+                      ) : (
+                        <Badge className="bg-success/20 text-success border border-success/40">
+                          Active
+                        </Badge>
+                      )}
                     </td>
-                    <td className="p-3 text-xs text-muted-foreground">{format(new Date(r.created_at), "MMM d, yyyy")}</td>
+                    <td className="p-3 text-xs text-muted-foreground">
+                      {format(new Date(r.created_at), "MMM d, yyyy")}
+                    </td>
                     <td className="p-3 text-right">
                       <div className="inline-flex gap-1">
                         <Button size="sm" variant="ghost" onClick={() => toggleBlock(r)}>
-                          {r.is_blocked
-                            ? <><ShieldCheck className="h-4 w-4 mr-1" /> Unblock</>
-                            : <><ShieldOff className="h-4 w-4 mr-1" /> Block</>}
+                          {r.is_blocked ? (
+                            <>
+                              <ShieldCheck className="h-4 w-4 mr-1" /> Unblock
+                            </>
+                          ) : (
+                            <>
+                              <ShieldOff className="h-4 w-4 mr-1" /> Block
+                            </>
+                          )}
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => deleteUser(r)}
-                          className="text-destructive hover:text-destructive">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteUser(r)}
+                          className="text-destructive hover:text-destructive"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                        {r.role !== 'admin' ? (
+                        {r.role !== "admin" ? (
                           <Button size="sm" variant="ghost" onClick={() => promoteUser(r)}>
                             <ShieldCheck className="h-4 w-4 mr-1" /> Promote
                           </Button>

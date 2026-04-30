@@ -4,7 +4,13 @@ import { toast } from "sonner";
 import { Loader2, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,17 +43,29 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
 
   const update = async (patch: Partial<Task>) => {
     setBusy(true);
-    const { error } = await supabase.from("tasks").update(patch as any).eq("id", task.id);
+    const { error } = await supabase
+      .from("tasks")
+      .update(patch as any)
+      .eq("id", task.id);
     setBusy(false);
-    if (error) { toast.error(error.message); return false; }
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
     onChanged?.();
     return true;
   };
 
-  const startTask = async () => { if (await update({ status: "in_progress", progress: Math.max(progress, 10) })) toast.success("Task started"); };
+  const startTask = async () => {
+    if (await update({ status: "in_progress", progress: Math.max(progress, 10) }))
+      toast.success("Task started");
+  };
   const completeTask = async () => {
-    if (completionDesc.trim().length < 5) return toast.error("Completion note must be at least 5 characters");
-    if (await update({ status: "completed", progress: 100, completion_description: completionDesc })) {
+    if (completionDesc.trim().length < 5)
+      return toast.error("Completion note must be at least 5 characters");
+    if (
+      await update({ status: "completed", progress: 100, completion_description: completionDesc })
+    ) {
       toast.success("Task completed");
       onOpenChange(false);
     }
@@ -59,7 +77,9 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
       onOpenChange(false);
     }
   };
-  const saveProgress = async () => { if (await update({ progress })) toast.success("Progress saved"); };
+  const saveProgress = async () => {
+    if (await update({ progress })) toast.success("Progress saved");
+  };
 
   const del = async () => {
     if (!confirm("Delete this task?")) return;
@@ -76,7 +96,9 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
             <DialogTitle className="font-display text-xl pr-4">{task.title}</DialogTitle>
-            <Badge className={`shrink-0 ${badgeColor(task.status)}`}>{task.status.replace("_"," ")}</Badge>
+            <Badge className={`shrink-0 ${badgeColor(task.status)}`}>
+              {task.status.replace("_", " ")}
+            </Badge>
           </div>
         </DialogHeader>
 
@@ -90,7 +112,9 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
             </div>
             <div className="rounded-lg border border-border/60 bg-card/40 p-3">
               <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Deadline</p>
-              <p className="mt-0.5 font-semibold">{task.deadline ? format(new Date(task.deadline),"MMM d, p") : "—"}</p>
+              <p className="mt-0.5 font-semibold">
+                {task.deadline ? format(new Date(task.deadline), "MMM d, p") : "—"}
+              </p>
             </div>
           </div>
 
@@ -101,28 +125,61 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
                   <span className="text-muted-foreground">Progress</span>
                   <span className="font-mono">{progress}%</span>
                 </div>
-                <Slider value={[progress]} onValueChange={(v) => setProgress(v[0])} max={100} step={5} />
-                <Button variant="outline" size="sm" onClick={saveProgress} disabled={busy} className="mt-2">Save progress</Button>
+                <Slider
+                  value={[progress]}
+                  onValueChange={(v) => setProgress(v[0])}
+                  max={100}
+                  step={5}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={saveProgress}
+                  disabled={busy}
+                  className="mt-2"
+                >
+                  Save progress
+                </Button>
               </div>
 
               {task.status === "pending" && (
-                <Button onClick={startTask} disabled={busy} className="w-full">Start task</Button>
+                <Button onClick={startTask} disabled={busy} className="w-full">
+                  Start task
+                </Button>
               )}
 
               <div className="rounded-lg border border-success/30 bg-success/5 p-3 space-y-2">
                 <p className="text-xs font-semibold text-success">Complete this task</p>
-                <Textarea placeholder="What did you accomplish? (min 5 chars)"
-                  value={completionDesc} onChange={(e) => setCompletionDesc(e.target.value)} rows={2} />
-                <Button onClick={completeTask} disabled={busy}
-                  className="w-full bg-success text-success-foreground hover:opacity-90">Mark completed</Button>
+                <Textarea
+                  placeholder="What did you accomplish? (min 5 chars)"
+                  value={completionDesc}
+                  onChange={(e) => setCompletionDesc(e.target.value)}
+                  rows={2}
+                />
+                <Button
+                  onClick={completeTask}
+                  disabled={busy}
+                  className="w-full bg-success text-success-foreground hover:opacity-90"
+                >
+                  Mark completed
+                </Button>
               </div>
 
               {task.status !== "blocked" && (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
                   <p className="text-xs font-semibold text-destructive">Block this task</p>
-                  <Textarea placeholder="What's blocking you? (min 3 chars)"
-                    value={blockerReason} onChange={(e) => setBlockerReason(e.target.value)} rows={2} />
-                  <Button onClick={blockTask} disabled={busy} variant="destructive" className="w-full">
+                  <Textarea
+                    placeholder="What's blocking you? (min 3 chars)"
+                    value={blockerReason}
+                    onChange={(e) => setBlockerReason(e.target.value)}
+                    rows={2}
+                  />
+                  <Button
+                    onClick={blockTask}
+                    disabled={busy}
+                    variant="destructive"
+                    className="w-full"
+                  >
                     Mark blocked
                   </Button>
                 </div>
@@ -132,13 +189,17 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
 
           {task.status === "blocked" && task.blocker_reason && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm">
-              <p className="text-xs font-semibold text-destructive uppercase tracking-wider">Blocker</p>
+              <p className="text-xs font-semibold text-destructive uppercase tracking-wider">
+                Blocker
+              </p>
               <p className="mt-1">{task.blocker_reason}</p>
             </div>
           )}
           {task.status === "completed" && task.completion_description && (
             <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm">
-              <p className="text-xs font-semibold text-success uppercase tracking-wider">Completed</p>
+              <p className="text-xs font-semibold text-success uppercase tracking-wider">
+                Completed
+              </p>
               <p className="mt-1">{task.completion_description}</p>
             </div>
           )}
@@ -146,11 +207,17 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
 
         <DialogFooter className="justify-between sm:justify-between">
           {canEdit && (
-            <Button variant="ghost" onClick={del} className="text-destructive hover:text-destructive">
+            <Button
+              variant="ghost"
+              onClick={del}
+              className="text-destructive hover:text-destructive"
+            >
               <Trash2 className="mr-2 h-4 w-4" /> Delete
             </Button>
           )}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -158,8 +225,11 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
 }
 
 function badgeColor(s: string) {
-  return s === "completed" ? "bg-success/20 text-success border-success/40"
-    : s === "in_progress" ? "bg-primary/20 text-primary border-primary/40"
-    : s === "blocked" ? "bg-destructive/20 text-destructive border-destructive/40"
-    : "bg-muted text-muted-foreground";
+  return s === "completed"
+    ? "bg-success/20 text-success border-success/40"
+    : s === "in_progress"
+      ? "bg-primary/20 text-primary border-primary/40"
+      : s === "blocked"
+        ? "bg-destructive/20 text-destructive border-destructive/40"
+        : "bg-muted text-muted-foreground";
 }

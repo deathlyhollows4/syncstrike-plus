@@ -4,12 +4,24 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Props {
   open: boolean;
@@ -18,14 +30,21 @@ interface Props {
   onCreated?: () => void;
 }
 
-interface TeamOpt { id: string; name: string; }
-interface MemberOpt { user_id: string; display_name: string | null; email: string; }
+interface TeamOpt {
+  id: string;
+  name: string;
+}
+interface MemberOpt {
+  user_id: string;
+  display_name: string | null;
+  email: string;
+}
 
 export function TaskCreateModal({ open, onOpenChange, defaultDate, onCreated }: Props) {
   const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState<"low"|"medium"|"high"|"urgent">("medium");
+  const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
   const [scheduled, setScheduled] = useState("");
   const [deadline, setDeadline] = useState("");
   const [teamId, setTeamId] = useState<string>("personal");
@@ -36,9 +55,13 @@ export function TaskCreateModal({ open, onOpenChange, defaultDate, onCreated }: 
 
   useEffect(() => {
     if (open) {
-      setTitle(""); setDescription(""); setPriority("medium");
+      setTitle("");
+      setDescription("");
+      setPriority("medium");
       setScheduled(defaultDate ? format(defaultDate, "yyyy-MM-dd'T'HH:mm") : "");
-      setDeadline(""); setTeamId("personal"); setAssigneeId("self");
+      setDeadline("");
+      setTeamId("personal");
+      setAssigneeId("self");
     }
   }, [open, defaultDate]);
 
@@ -53,14 +76,32 @@ export function TaskCreateModal({ open, onOpenChange, defaultDate, onCreated }: 
 
   // Load members of selected team
   useEffect(() => {
-    if (teamId === "personal") { setMembers([]); setAssigneeId("self"); return; }
+    if (teamId === "personal") {
+      setMembers([]);
+      setAssigneeId("self");
+      return;
+    }
     (async () => {
-      const { data: tm } = await supabase.from("team_members").select("user_id").eq("team_id", teamId);
+      const { data: tm } = await supabase
+        .from("team_members")
+        .select("user_id")
+        .eq("team_id", teamId);
       const ids = (tm ?? []).map((x: any) => x.user_id);
-      if (!ids.length) { setMembers([]); return; }
-      const { data: ps } = await supabase.from("profiles")
-        .select("id, email, display_name").in("id", ids);
-      setMembers((ps ?? []).map((p: any) => ({ user_id: p.id, email: p.email, display_name: p.display_name })));
+      if (!ids.length) {
+        setMembers([]);
+        return;
+      }
+      const { data: ps } = await supabase
+        .from("profiles")
+        .select("id, email, display_name")
+        .in("id", ids);
+      setMembers(
+        (ps ?? []).map((p: any) => ({
+          user_id: p.id,
+          email: p.email,
+          display_name: p.display_name,
+        })),
+      );
     })();
   }, [teamId]);
 
@@ -69,7 +110,9 @@ export function TaskCreateModal({ open, onOpenChange, defaultDate, onCreated }: 
     if (!user) return;
     setBusy(true);
     const { error } = await supabase.from("tasks").insert({
-      title, description: description || null, priority,
+      title,
+      description: description || null,
+      priority,
       scheduled_for: scheduled ? new Date(scheduled).toISOString() : null,
       deadline: deadline ? new Date(deadline).toISOString() : null,
       creator_id: user.id,
@@ -77,7 +120,10 @@ export function TaskCreateModal({ open, onOpenChange, defaultDate, onCreated }: 
       team_id: teamId === "personal" ? null : teamId,
     });
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Task created");
     onOpenChange(false);
     onCreated?.();
@@ -92,18 +138,31 @@ export function TaskCreateModal({ open, onOpenChange, defaultDate, onCreated }: 
         <form onSubmit={submit} className="space-y-4">
           <div>
             <Label htmlFor="t-title">Title</Label>
-            <Input id="t-title" required value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1.5" />
+            <Input
+              id="t-title"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="mt-1.5"
+            />
           </div>
           <div>
             <Label htmlFor="t-desc">Description</Label>
-            <Textarea id="t-desc" value={description} onChange={(e) => setDescription(e.target.value)}
-              className="mt-1.5" rows={3} />
+            <Textarea
+              id="t-desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="mt-1.5"
+              rows={3}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Priority</Label>
               <Select value={priority} onValueChange={(v: any) => setPriority(v)}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
@@ -115,10 +174,16 @@ export function TaskCreateModal({ open, onOpenChange, defaultDate, onCreated }: 
             <div>
               <Label>Team</Label>
               <Select value={teamId} onValueChange={setTeamId}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="personal">Personal (no team)</SelectItem>
-                  {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  {teams.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -127,14 +192,18 @@ export function TaskCreateModal({ open, onOpenChange, defaultDate, onCreated }: 
             <div>
               <Label>Assignee</Label>
               <Select value={assigneeId} onValueChange={setAssigneeId}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="self">Me</SelectItem>
-                  {members.filter((m) => m.user_id !== user?.id).map((m) => (
-                    <SelectItem key={m.user_id} value={m.user_id}>
-                      {m.display_name ?? m.email}
-                    </SelectItem>
-                  ))}
+                  {members
+                    .filter((m) => m.user_id !== user?.id)
+                    .map((m) => (
+                      <SelectItem key={m.user_id} value={m.user_id}>
+                        {m.display_name ?? m.email}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -142,19 +211,34 @@ export function TaskCreateModal({ open, onOpenChange, defaultDate, onCreated }: 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="t-sch">Scheduled for</Label>
-              <Input id="t-sch" type="datetime-local" value={scheduled}
-                onChange={(e) => setScheduled(e.target.value)} className="mt-1.5" />
+              <Input
+                id="t-sch"
+                type="datetime-local"
+                value={scheduled}
+                onChange={(e) => setScheduled(e.target.value)}
+                className="mt-1.5"
+              />
             </div>
             <div>
               <Label htmlFor="t-dl">Deadline</Label>
-              <Input id="t-dl" type="datetime-local" value={deadline}
-                onChange={(e) => setDeadline(e.target.value)} className="mt-1.5" />
+              <Input
+                id="t-dl"
+                type="datetime-local"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                className="mt-1.5"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={busy}
-              className="bg-gold-shine text-[oklch(0.16_0.02_75)] hover:opacity-90 font-semibold">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={busy}
+              className="bg-gold-shine text-[oklch(0.16_0.02_75)] hover:opacity-90 font-semibold"
+            >
               {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create
             </Button>

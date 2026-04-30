@@ -9,6 +9,6 @@ import { defineConfig as defineViteConfig } from "vite";
 
 // When running tests (Vitest), avoid initializing the full TanStack Start
 // plugin surface which expects a running dev server. Vitest sets `process.env.VITEST`.
-const isVitest = typeof process !== 'undefined' && !!process.env.VITEST;
+const isVitest = typeof process !== "undefined" && !!process.env.VITEST;
 
-export default (isVitest ? defineViteConfig({}) : defineTanstackConfig());
+export default isVitest ? defineViteConfig({}) : defineTanstackConfig();

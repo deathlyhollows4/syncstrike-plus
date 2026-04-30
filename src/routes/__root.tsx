@@ -10,9 +10,7 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="font-display text-8xl font-black text-gold-shine">404</h1>
         <h2 className="mt-4 font-display text-xl font-semibold">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          This page doesn't exist or has moved.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">This page doesn't exist or has moved.</p>
         <Link
           to="/"
           className="mt-6 inline-flex items-center rounded-md bg-gold-shine px-4 py-2 text-sm font-semibold text-[oklch(0.16_0.02_75)] hover:opacity-90"
@@ -36,14 +34,34 @@ export const Route = createRootRoute({
           "Chrono-Dashboard, blocker escalation, team chat, and analytics — built for teams that ship.",
       },
       { property: "og:title", content: "SyncStrike — Team productivity, with rhythm" },
-      { property: "og:description", content: "Stop guessing what your team is doing. See progress, delays, and accountability in real time — all in one place." },
+      {
+        property: "og:description",
+        content:
+          "Stop guessing what your team is doing. See progress, delays, and accountability in real time — all in one place.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "SyncStrike — Team productivity, with rhythm" },
-      { name: "description", content: "Stop guessing what your team is doing. See progress, delays, and accountability in real time — all in one place." },
-      { name: "twitter:description", content: "Stop guessing what your team is doing. See progress, delays, and accountability in real time — all in one place." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/ea788033-49c2-4116-8c82-ff0d94393c88" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/ea788033-49c2-4116-8c82-ff0d94393c88" },
+      {
+        name: "description",
+        content:
+          "Stop guessing what your team is doing. See progress, delays, and accountability in real time — all in one place.",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Stop guessing what your team is doing. See progress, delays, and accountability in real time — all in one place.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/ea788033-49c2-4116-8c82-ff0d94393c88",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/ea788033-49c2-4116-8c82-ff0d94393c88",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

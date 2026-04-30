@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-import { playBeep } from './audio';
+import { describe, it, expect, vi } from "vitest";
+import { playBeep } from "./audio";
 
-describe('playBeep', () => {
-  it('creates audio nodes and schedules start/stop', () => {
+describe("playBeep", () => {
+  it("creates audio nodes and schedules start/stop", () => {
     const orig = (globalThis as any).AudioContext;
     const origWindow = (globalThis as any).window;
     class MockAudioContext {
@@ -11,10 +11,12 @@ describe('playBeep', () => {
       static lastInstance: any = null;
       _osc: any;
       _gain: any;
-      constructor() { (MockAudioContext as any).lastInstance = this; }
+      constructor() {
+        (MockAudioContext as any).lastInstance = this;
+      }
       createOscillator() {
         const osc = {
-          type: '',
+          type: "",
           frequency: { value: 0 },
           connect: vi.fn().mockReturnThis(),
           start: vi.fn(),

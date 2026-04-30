@@ -46,6 +46,33 @@ function AdminPage() {
   };
   useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
 
+  const promoteUser = async (r: Row) => {
+    if (!confirm(`Promote ${r.email} to admin?`)) return;
+    const { error } = await supabase.from("user_roles").insert({ user_id: r.id, role: 'admin' });
+    if (error) {
+      // If already exists, show a friendly message
+      if (error.message && error.message.toLowerCase().includes('duplicate')) {
+        toast.error('User already has the admin role');
+      } else {
+        toast.error(error.message);
+      }
+      return;
+    }
+    toast.success('User promoted to admin');
+    load();
+  };
+
+  const demoteUser = async (r: Row) => {
+    if (!confirm(`Remove admin role from ${r.email}?`)) return;
+    const { error } = await supabase.from("user_roles").delete().match({ user_id: r.id, role: 'admin' });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Admin role removed');
+    load();
+  };
+
   const toggleBlock = async (r: Row) => {
     const { error } = await supabase.from("profiles").update({ is_blocked: !r.is_blocked }).eq("id", r.id);
     if (error) return toast.error(error.message);
@@ -151,6 +178,15 @@ function AdminPage() {
                           className="text-destructive hover:text-destructive">
                           <Trash2 className="h-4 w-4" />
                         </Button>
+                        {r.role !== 'admin' ? (
+                          <Button size="sm" variant="ghost" onClick={() => promoteUser(r)}>
+                            <ShieldCheck className="h-4 w-4 mr-1" /> Promote
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="ghost" onClick={() => demoteUser(r)}>
+                            <ShieldOff className="h-4 w-4 mr-1" /> Demote
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>

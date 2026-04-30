@@ -12,7 +12,10 @@ import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_app/profile")({ component: ProfilePage });
 
-interface MyTeam { id: string; name: string; }
+interface MyTeam {
+  id: string;
+  name: string;
+}
 
 function ProfilePage() {
   const { user, role } = useAuth();
@@ -28,13 +31,18 @@ function ProfilePage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data: p } = await supabase.from("profiles")
-        .select("display_name, avatar_url").eq("id", user.id).maybeSingle();
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("display_name, avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
       setDisplayName(p?.display_name ?? "");
       setAvatarUrl(p?.avatar_url ?? "");
 
-      const { data: tm } = await supabase.from("team_members")
-        .select("team_id").eq("user_id", user.id);
+      const { data: tm } = await supabase
+        .from("team_members")
+        .select("team_id")
+        .eq("user_id", user.id);
       const ids = (tm ?? []).map((x: any) => x.team_id);
       if (ids.length) {
         const { data: t } = await supabase.from("teams").select("id, name").in("id", ids);
@@ -52,17 +60,21 @@ function ProfilePage() {
     const { error } = await supabase.auth.updateUser({ password: pwd });
     setBusy(false);
     if (error) return toast.error(error.message);
-    setPwd(""); toast.success("Password updated");
+    setPwd("");
+    toast.success("Password updated");
   };
 
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setSavingProfile(true);
-    const { error } = await supabase.from("profiles").update({
-      display_name: displayName.trim() || null,
-      avatar_url: avatarUrl.trim() || null,
-    }).eq("id", user.id);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        display_name: displayName.trim() || null,
+        avatar_url: avatarUrl.trim() || null,
+      })
+      .eq("id", user.id);
     setSavingProfile(false);
     if (error) return toast.error(error.message);
     toast.success("Profile updated");
@@ -91,16 +103,30 @@ function ProfilePage() {
         <form onSubmit={saveProfile} className="mt-4 space-y-3">
           <div>
             <Label htmlFor="dn">Display name</Label>
-            <Input id="dn" value={displayName} maxLength={80}
-              onChange={(e) => setDisplayName(e.target.value)} className="mt-1.5" />
+            <Input
+              id="dn"
+              value={displayName}
+              maxLength={80}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="mt-1.5"
+            />
           </div>
           <div>
             <Label htmlFor="av">Avatar URL</Label>
-            <Input id="av" value={avatarUrl} placeholder="https://…" maxLength={500}
-              onChange={(e) => setAvatarUrl(e.target.value)} className="mt-1.5" />
+            <Input
+              id="av"
+              value={avatarUrl}
+              placeholder="https://…"
+              maxLength={500}
+              onChange={(e) => setAvatarUrl(e.target.value)}
+              className="mt-1.5"
+            />
           </div>
-          <Button type="submit" disabled={savingProfile}
-            className="bg-gold-shine text-[oklch(0.16_0.02_75)] hover:opacity-90 font-semibold">
+          <Button
+            type="submit"
+            disabled={savingProfile}
+            className="bg-gold-shine text-[oklch(0.16_0.02_75)] hover:opacity-90 font-semibold"
+          >
             {savingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save
           </Button>
@@ -110,14 +136,20 @@ function ProfilePage() {
       <Card className="p-6 surface border-border/60">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold">My teams</h2>
-          <Link to="/teams" className="text-xs text-gold-shine hover:underline">Manage →</Link>
+          <Link to="/teams" className="text-xs text-gold-shine hover:underline">
+            Manage →
+          </Link>
         </div>
         {teams.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">You're not in any team yet.</p>
         ) : (
           <div className="mt-3 flex flex-wrap gap-2">
             {teams.map((t) => (
-              <Badge key={t.id} variant="outline" className="gap-1 border-gold-shine/30 text-foreground">
+              <Badge
+                key={t.id}
+                variant="outline"
+                className="gap-1 border-gold-shine/30 text-foreground"
+              >
                 <Users className="h-3 w-3 text-gold-shine" /> {t.name}
               </Badge>
             ))}
@@ -130,11 +162,20 @@ function ProfilePage() {
         <form onSubmit={updatePwd} className="mt-4 space-y-3">
           <div>
             <Label htmlFor="np">New password</Label>
-            <Input id="np" type="password" minLength={8} value={pwd}
-              onChange={(e) => setPwd(e.target.value)} className="mt-1.5" />
+            <Input
+              id="np"
+              type="password"
+              minLength={8}
+              value={pwd}
+              onChange={(e) => setPwd(e.target.value)}
+              className="mt-1.5"
+            />
           </div>
-          <Button type="submit" disabled={busy}
-            className="bg-gold-shine text-[oklch(0.16_0.02_75)] hover:opacity-90 font-semibold">
+          <Button
+            type="submit"
+            disabled={busy}
+            className="bg-gold-shine text-[oklch(0.16_0.02_75)] hover:opacity-90 font-semibold"
+          >
             Update password
           </Button>
         </form>

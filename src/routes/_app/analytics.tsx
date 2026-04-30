@@ -4,12 +4,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { format, subDays, startOfDay } from "date-fns";
 import { Card } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/_app/analytics")({ component: AnalyticsPage });
 
-interface Row { status: string; completed_at: string | null; created_at: string; team_id: string | null; }
-interface TeamOpt { id: string; name: string; }
+interface Row {
+  status: string;
+  completed_at: string | null;
+  created_at: string;
+  team_id: string | null;
+}
+interface TeamOpt {
+  id: string;
+  name: string;
+}
 
 function AnalyticsPage() {
   const { user } = useAuth();
@@ -35,18 +49,23 @@ function AnalyticsPage() {
     return rows.filter((r) => r.team_id === teamFilter);
   }, [rows, teamFilter]);
 
-  const stats = useMemo(() => ({
-    total: filtered.length,
-    completed: filtered.filter((t) => t.status === "completed").length,
-    blocked: filtered.filter((t) => t.status === "blocked").length,
-    inProgress: filtered.filter((t) => t.status === "in_progress").length,
-  }), [filtered]);
+  const stats = useMemo(
+    () => ({
+      total: filtered.length,
+      completed: filtered.filter((t) => t.status === "completed").length,
+      blocked: filtered.filter((t) => t.status === "blocked").length,
+      inProgress: filtered.filter((t) => t.status === "in_progress").length,
+    }),
+    [filtered],
+  );
 
   const trend = useMemo(() => {
     const days = Array.from({ length: 7 }, (_, i) => startOfDay(subDays(new Date(), 6 - i)));
     return days.map((d) => ({
       day: format(d, "EEE"),
-      count: filtered.filter((t) => t.completed_at && startOfDay(new Date(t.completed_at)).getTime() === d.getTime()).length,
+      count: filtered.filter(
+        (t) => t.completed_at && startOfDay(new Date(t.completed_at)).getTime() === d.getTime(),
+      ).length,
     }));
   }, [filtered]);
 
@@ -61,11 +80,17 @@ function AnalyticsPage() {
         </div>
         <div className="w-48">
           <Select value={teamFilter} onValueChange={setTeamFilter}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All tasks</SelectItem>
               <SelectItem value="personal">Personal only</SelectItem>
-              {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+              {teams.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -90,8 +115,13 @@ function AnalyticsPage() {
         <div className="mt-6 flex items-end gap-3 h-48">
           {trend.map((t) => (
             <div key={t.day} className="flex-1 flex flex-col items-center gap-2">
-              <div className="w-full bg-gold-shine rounded-t-md transition-all"
-                style={{ height: `${(t.count / max) * 100}%`, minHeight: t.count > 0 ? "8px" : "2px" }} />
+              <div
+                className="w-full bg-gold-shine rounded-t-md transition-all"
+                style={{
+                  height: `${(t.count / max) * 100}%`,
+                  minHeight: t.count > 0 ? "8px" : "2px",
+                }}
+              />
               <p className="text-[11px] text-muted-foreground">{t.day}</p>
               <p className="text-xs font-bold">{t.count}</p>
             </div>

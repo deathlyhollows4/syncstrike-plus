@@ -10,15 +10,27 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface ChatTeam { id: string; name: string; }
-interface ChatMessage {
-  id: string; team_id: string; sender_id: string;
-  body: string; created_at: string;
+interface ChatTeam {
+  id: string;
+  name: string;
 }
-interface Profile { id: string; email: string; display_name: string | null; }
+interface ChatMessage {
+  id: string;
+  team_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+}
+interface Profile {
+  id: string;
+  email: string;
+  display_name: string | null;
+}
 
 export const Route = createFileRoute("/_app/chat")({
-  validateSearch: (s: Record<string, unknown>) => ({ team: typeof s.team === "string" ? s.team : undefined }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    team: typeof s.team === "string" ? s.team : undefined,
+  }),
   component: ChatPage,
 });
 
@@ -52,19 +64,29 @@ function ChatPage() {
 
   // Load messages + sender profiles when team changes
   useEffect(() => {
-    if (!activeId) { setMessages([]); return; }
+    if (!activeId) {
+      setMessages([]);
+      return;
+    }
     (async () => {
-      const { data } = await supabase.from("chat_messages")
-        .select("*").eq("team_id", activeId)
-        .order("created_at", { ascending: true }).limit(200);
+      const { data } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("team_id", activeId)
+        .order("created_at", { ascending: true })
+        .limit(200);
       const msgs = (data as ChatMessage[]) ?? [];
       setMessages(msgs);
       const ids = Array.from(new Set(msgs.map((m) => m.sender_id)));
       if (ids.length) {
-        const { data: ps } = await supabase.from("profiles")
-          .select("id, email, display_name").in("id", ids);
+        const { data: ps } = await supabase
+          .from("profiles")
+          .select("id, email, display_name")
+          .in("id", ids);
         const map: Record<string, Profile> = {};
-        (ps ?? []).forEach((p: any) => { map[p.id] = p; });
+        (ps ?? []).forEach((p: any) => {
+          map[p.id] = p;
+        });
         setProfiles((prev) => ({ ...prev, ...map }));
       }
     })();
@@ -73,26 +95,44 @@ function ChatPage() {
   // Realtime
   useEffect(() => {
     if (!activeId) return;
-    const ch = supabase.channel(`chat-${activeId}`)
-      .on("postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_messages", filter: `team_id=eq.${activeId}` },
+    const ch = supabase
+      .channel(`chat-${activeId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "chat_messages",
+          filter: `team_id=eq.${activeId}`,
+        },
         async (payload) => {
           const m = payload.new as ChatMessage;
-          setMessages((prev) => prev.some((x) => x.id === m.id) ? prev : [...prev, m]);
+          setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
           if (!profiles[m.sender_id]) {
-            const { data } = await supabase.from("profiles")
-              .select("id, email, display_name").eq("id", m.sender_id).maybeSingle();
+            const { data } = await supabase
+              .from("profiles")
+              .select("id, email, display_name")
+              .eq("id", m.sender_id)
+              .maybeSingle();
             if (data) setProfiles((prev) => ({ ...prev, [m.sender_id]: data as Profile }));
           }
-        })
+        },
+      )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [activeId]);
 
   // Auto-scroll
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-  const activeTeam = useMemo(() => teams?.find((t) => t.id === activeId) ?? null, [teams, activeId]);
+  const activeTeam = useMemo(
+    () => teams?.find((t) => t.id === activeId) ?? null,
+    [teams, activeId],
+  );
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,7 +140,9 @@ function ChatPage() {
     setSending(true);
     const body = draft.trim().slice(0, 2000);
     const { error } = await supabase.from("chat_messages").insert({
-      body, team_id: activeId, sender_id: user.id,
+      body,
+      team_id: activeId,
+      sender_id: user.id,
     });
     setSending(false);
     if (error) return toast.error(error.message);
@@ -108,7 +150,13 @@ function ChatPage() {
   };
 
   if (teams === null) {
-    return <div className="space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-14" />)}</div>;
+    return (
+      <div className="space-y-3">
+        {[...Array(3)].map((_, i) => (
+          <Skeleton key={i} className="h-14" />
+        ))}
+      </div>
+    );
   }
 
   return (
@@ -134,10 +182,14 @@ function ChatPage() {
             <ul className="flex-1 overflow-y-auto divide-y divide-border/40">
               {teams.map((t) => (
                 <li key={t.id}>
-                  <button onClick={() => setActiveId(t.id)}
+                  <button
+                    onClick={() => setActiveId(t.id)}
                     className={`w-full text-left px-4 py-3 flex items-center gap-2 transition ${
-                      t.id === activeId ? "bg-gold-shine/10 border-l-2 border-gold-shine" : "hover:bg-accent/30"
-                    }`}>
+                      t.id === activeId
+                        ? "bg-gold-shine/10 border-l-2 border-gold-shine"
+                        : "hover:bg-accent/30"
+                    }`}
+                  >
                     <Users className="h-4 w-4 text-gold-shine" />
                     <span className="text-sm font-medium truncate">{t.name}</span>
                   </button>
@@ -162,33 +214,54 @@ function ChatPage() {
                     <p className="text-center text-sm text-muted-foreground py-12">
                       No messages yet. Say hi 👋
                     </p>
-                  ) : messages.map((m) => {
-                    const mine = m.sender_id === user?.id;
-                    const p = profiles[m.sender_id];
-                    const name = p?.display_name ?? p?.email?.split("@")[0] ?? "Unknown";
-                    return (
-                      <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-                          mine
-                            ? "bg-gold-shine text-[oklch(0.16_0.02_75)] rounded-br-sm"
-                            : "bg-card border border-border/60 rounded-bl-sm"
-                        }`}>
-                          {!mine && <p className="text-[10px] uppercase tracking-wider opacity-70 mb-0.5">{name}</p>}
-                          <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
-                          <p className={`text-[10px] mt-1 ${mine ? "opacity-70" : "text-muted-foreground"}`}>
-                            {format(new Date(m.created_at), "p")}
-                          </p>
+                  ) : (
+                    messages.map((m) => {
+                      const mine = m.sender_id === user?.id;
+                      const p = profiles[m.sender_id];
+                      const name = p?.display_name ?? p?.email?.split("@")[0] ?? "Unknown";
+                      return (
+                        <div
+                          key={m.id}
+                          className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                            className={`max-w-[75%] rounded-2xl px-4 py-2 ${
+                              mine
+                                ? "bg-gold-shine text-[oklch(0.16_0.02_75)] rounded-br-sm"
+                                : "bg-card border border-border/60 rounded-bl-sm"
+                            }`}
+                          >
+                            {!mine && (
+                              <p className="text-[10px] uppercase tracking-wider opacity-70 mb-0.5">
+                                {name}
+                              </p>
+                            )}
+                            <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                            <p
+                              className={`text-[10px] mt-1 ${mine ? "opacity-70" : "text-muted-foreground"}`}
+                            >
+                              {format(new Date(m.created_at), "p")}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                   <div ref={endRef} />
                 </div>
                 <form onSubmit={send} className="border-t border-border/60 p-3 flex gap-2">
-                  <Input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={2000}
-                    placeholder={`Message ${activeTeam.name}…`} className="flex-1" />
-                  <Button type="submit" disabled={sending || !draft.trim()}
-                    className="bg-gold-shine text-[oklch(0.16_0.02_75)] hover:opacity-90 font-semibold">
+                  <Input
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    maxLength={2000}
+                    placeholder={`Message ${activeTeam.name}…`}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={sending || !draft.trim()}
+                    className="bg-gold-shine text-[oklch(0.16_0.02_75)] hover:opacity-90 font-semibold"
+                  >
                     <Send className="h-4 w-4" />
                   </Button>
                 </form>

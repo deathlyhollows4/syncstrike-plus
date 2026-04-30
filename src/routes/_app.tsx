@@ -1,6 +1,22 @@
-import { createFileRoute, Outlet, redirect, Link, useLocation, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Outlet,
+  redirect,
+  Link,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Calendar, ListTodo, Users, BarChart3, MessageSquare, Shield, LogOut, User as UserIcon } from "lucide-react";
+import {
+  Calendar,
+  ListTodo,
+  Users,
+  BarChart3,
+  MessageSquare,
+  Shield,
+  LogOut,
+  User as UserIcon,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Logo } from "@/components/Logo";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -40,28 +56,35 @@ function AppLayout() {
     <div className="min-h-screen flex">
       {/* Sidebar */}
       <aside className="hidden md:flex w-64 flex-col border-r border-border/60 bg-sidebar p-4">
-        <div className="mb-8 px-2"><Logo /></div>
+        <div className="mb-8 px-2">
+          <Logo />
+        </div>
         <nav className="flex-1 space-y-1">
           {NAV.map((item) => {
             const active = loc.pathname.startsWith(item.to);
             return (
-              <Link key={item.to} to={item.to}
+              <Link
+                key={item.to}
+                to={item.to}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                   active
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                }`}>
+                }`}
+              >
                 <item.icon className="h-4 w-4" /> {item.label}
               </Link>
             );
           })}
           {isAdmin && (
-            <Link to="/admin"
+            <Link
+              to="/admin"
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                 loc.pathname.startsWith("/admin")
                   ? "bg-gold-shine text-[oklch(0.16_0.02_75)]"
                   : "text-gold-shine hover:bg-sidebar-accent/50"
-              }`}>
+              }`}
+            >
               <Shield className="h-4 w-4" /> Admin
             </Link>
           )}
@@ -78,8 +101,12 @@ function AppLayout() {
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={signOut}
-            className="mt-3 w-full justify-start text-xs text-muted-foreground hover:text-foreground">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={signOut}
+            className="mt-3 w-full justify-start text-xs text-muted-foreground hover:text-foreground"
+          >
             <LogOut className="mr-2 h-3.5 w-3.5" /> Sign out
           </Button>
         </div>
@@ -89,31 +116,43 @@ function AppLayout() {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl">
           <div className="flex items-center justify-between px-4 sm:px-8 py-3">
-            <div className="md:hidden"><Logo /></div>
+            <div className="md:hidden">
+              <Logo />
+            </div>
             <div className="hidden md:block" />
             <div className="flex items-center gap-1">
               <NotificationBell />
               <Link to="/profile">
-                <Button variant="ghost" size="icon"><UserIcon className="h-5 w-5" /></Button>
+                <Button variant="ghost" size="icon">
+                  <UserIcon className="h-5 w-5" />
+                </Button>
               </Link>
             </div>
           </div>
           {/* mobile nav */}
           <div className="md:hidden flex gap-1 overflow-x-auto px-4 pb-3">
             {NAV.map((item) => (
-              <Link key={item.to} to={item.to}
-                className="rounded-md border border-border/40 px-3 py-1.5 text-xs whitespace-nowrap">
+              <Link
+                key={item.to}
+                to={item.to}
+                className="rounded-md border border-border/40 px-3 py-1.5 text-xs whitespace-nowrap"
+              >
                 {item.label}
               </Link>
             ))}
             {isAdmin && (
-              <Link to="/admin" className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs text-gold-shine whitespace-nowrap">
+              <Link
+                to="/admin"
+                className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs text-gold-shine whitespace-nowrap"
+              >
                 Admin
               </Link>
             )}
           </div>
         </header>
-        <main className="flex-1 px-4 sm:px-8 py-8"><Outlet /></main>
+        <main className="flex-1 px-4 sm:px-8 py-8">
+          <Outlet />
+        </main>
       </div>
     </div>
   );

@@ -65,13 +65,17 @@ function ResetPage() {
     <AuthShell
       title="Set a new password"
       subtitle="Enter and confirm your new password."
-      footer={<Link to="/login" className="text-foreground hover:underline">Back to sign in</Link>}
+      footer={
+        <Link to="/login" className="text-foreground hover:underline">
+          Back to sign in
+        </Link>
+      }
     >
       {!ready ? (
         <div className="rounded-xl border border-border/60 bg-card/40 p-6 text-sm text-muted-foreground space-y-3">
           <p>
-            Open this page from the password-reset email link. If you got here directly,
-            request a new link.
+            Open this page from the password-reset email link. If you got here directly, request a
+            new link.
           </p>
           <Link to="/forgot-password" className="inline-block text-gold-shine hover:underline">
             Request a new reset link →
@@ -81,16 +85,35 @@ function ResetPage() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <Label htmlFor="password">New password</Label>
-            <Input id="password" type="password" required minLength={8} autoComplete="new-password"
-              value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5" />
+            <Input
+              id="password"
+              type="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1.5"
+            />
           </div>
           <div>
             <Label htmlFor="confirm">Confirm password</Label>
-            <Input id="confirm" type="password" required minLength={8} autoComplete="new-password"
-              value={confirm} onChange={(e) => setConfirm(e.target.value)} className="mt-1.5" />
+            <Input
+              id="confirm"
+              type="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              className="mt-1.5"
+            />
           </div>
-          <Button type="submit" disabled={busy}
-            className="w-full bg-gold-shine text-[oklch(0.16_0.02_75)] hover:opacity-90 font-semibold">
+          <Button
+            type="submit"
+            disabled={busy}
+            className="w-full bg-gold-shine text-[oklch(0.16_0.02_75)] hover:opacity-90 font-semibold"
+          >
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Update password
           </Button>

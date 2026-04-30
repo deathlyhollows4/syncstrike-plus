@@ -23,7 +23,7 @@ function AdminPage() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [q, setQ] = useState("");
-  const [stats, setStats] = useState({ users: 0, tasks: 0, blocked: 0 });
+  const [stats, setStats] = useState({ users: 0, tasks: 0, blocked: 0, teams: 0 });
 
   // Redirect non-admins as soon as role is known. Render nothing until then —
   // never expose any admin UI or trigger any admin queries for non-admins.
@@ -32,16 +32,17 @@ function AdminPage() {
   }, [loading, role, isAdmin, navigate]);
 
   const load = async () => {
-    const [{ data: profiles }, { data: roles }, { count: tcount }, { count: bcount }] = await Promise.all([
+    const [{ data: profiles }, { data: roles }, { count: tcount }, { count: bcount }, { count: teamCount }] = await Promise.all([
       supabase.from("profiles").select("id, email, display_name, is_blocked, created_at"),
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("tasks").select("*", { count: "exact", head: true }),
       supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "blocked"),
+      supabase.from("teams").select("*", { count: "exact", head: true }),
     ]);
     const roleMap = new Map((roles ?? []).map((r: any) => [r.user_id, r.role]));
     const merged: Row[] = (profiles ?? []).map((p: any) => ({ ...p, role: roleMap.get(p.id) ?? null }));
     setRows(merged);
-    setStats({ users: merged.length, tasks: tcount ?? 0, blocked: bcount ?? 0 });
+    setStats({ users: merged.length, tasks: tcount ?? 0, blocked: bcount ?? 0, teams: teamCount ?? 0 });
   };
   useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
 
@@ -76,9 +77,10 @@ function AdminPage() {
         <h1 className="font-display text-3xl font-bold mt-1">Admin dashboard</h1>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         {[
           { label: "Total users", val: stats.users },
+          { label: "Teams", val: stats.teams, color: "text-gold-shine" },
           { label: "Total tasks", val: stats.tasks },
           { label: "Blocked tasks", val: stats.blocked, color: "text-destructive" },
         ].map((s) => (

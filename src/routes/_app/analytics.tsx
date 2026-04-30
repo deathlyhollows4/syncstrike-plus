@@ -1,43 +1,74 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { format, subDays, startOfDay } from "date-fns";
 import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_app/analytics")({ component: AnalyticsPage });
 
+interface Row { status: string; completed_at: string | null; created_at: string; team_id: string | null; }
+interface TeamOpt { id: string; name: string; }
+
 function AnalyticsPage() {
   const { user } = useAuth();
-  const [stats, setStats] = useState({ total: 0, completed: 0, blocked: 0, inProgress: 0 });
-  const [trend, setTrend] = useState<{ day: string; count: number }[]>([]);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [teams, setTeams] = useState<TeamOpt[]>([]);
+  const [teamFilter, setTeamFilter] = useState<string>("all");
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase.from("tasks").select("status, completed_at, created_at");
-      if (!data) return;
-      const total = data.length;
-      const completed = data.filter((t: any) => t.status === "completed").length;
-      const blocked = data.filter((t: any) => t.status === "blocked").length;
-      const inProgress = data.filter((t: any) => t.status === "in_progress").length;
-      setStats({ total, completed, blocked, inProgress });
-
-      const days = Array.from({ length: 7 }, (_, i) => startOfDay(subDays(new Date(), 6 - i)));
-      setTrend(days.map((d) => ({
-        day: format(d, "EEE"),
-        count: data.filter((t: any) => t.completed_at && startOfDay(new Date(t.completed_at)).getTime() === d.getTime()).length,
-      })));
+      const [{ data }, { data: t }] = await Promise.all([
+        supabase.from("tasks").select("status, completed_at, created_at, team_id"),
+        supabase.from("teams").select("id, name").order("name"),
+      ]);
+      setRows((data as Row[]) ?? []);
+      setTeams((t as TeamOpt[]) ?? []);
     })();
   }, [user]);
+
+  const filtered = useMemo(() => {
+    if (teamFilter === "all") return rows;
+    if (teamFilter === "personal") return rows.filter((r) => r.team_id === null);
+    return rows.filter((r) => r.team_id === teamFilter);
+  }, [rows, teamFilter]);
+
+  const stats = useMemo(() => ({
+    total: filtered.length,
+    completed: filtered.filter((t) => t.status === "completed").length,
+    blocked: filtered.filter((t) => t.status === "blocked").length,
+    inProgress: filtered.filter((t) => t.status === "in_progress").length,
+  }), [filtered]);
+
+  const trend = useMemo(() => {
+    const days = Array.from({ length: 7 }, (_, i) => startOfDay(subDays(new Date(), 6 - i)));
+    return days.map((d) => ({
+      day: format(d, "EEE"),
+      count: filtered.filter((t) => t.completed_at && startOfDay(new Date(t.completed_at)).getTime() === d.getTime()).length,
+    }));
+  }, [filtered]);
 
   const max = Math.max(...trend.map((t) => t.count), 1);
 
   return (
     <div className="space-y-8">
-      <div>
-        <p className="text-sm text-muted-foreground">Insights</p>
-        <h1 className="font-display text-3xl font-bold mt-1">Analytics</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-sm text-muted-foreground">Insights</p>
+          <h1 className="font-display text-3xl font-bold mt-1">Analytics</h1>
+        </div>
+        <div className="w-48">
+          <Select value={teamFilter} onValueChange={setTeamFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All tasks</SelectItem>
+              <SelectItem value="personal">Personal only</SelectItem>
+              {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">

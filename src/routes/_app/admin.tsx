@@ -128,7 +128,10 @@ function AdminPage() {
   return (
     <div className="space-y-8">
       <div>
-        <p className="text-sm text-gold-shine">Admin</p>
+        <p className="text-sm text-muted-foreground flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-gold-shine" />
+          Admin
+        </p>
         <h1 className="font-display text-3xl font-bold mt-1">Admin dashboard</h1>
       </div>
 

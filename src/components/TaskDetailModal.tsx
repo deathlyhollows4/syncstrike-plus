@@ -28,6 +28,7 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
   const [progress, setProgress] = useState(0);
   const [completionDesc, setCompletionDesc] = useState("");
   const [blockerReason, setBlockerReason] = useState("");
+  const [assigneeProfile, setAssigneeProfile] = useState<{ display_name: string | null; email: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -37,6 +38,22 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
       setBlockerReason(task.blocker_reason ?? "");
     }
   }, [task]);
+
+  // Fetch assignee profile
+  useEffect(() => {
+    if (!task?.assignee_id) {
+      setAssigneeProfile(null);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name, email")
+        .eq("id", task.assignee_id)
+        .maybeSingle();
+      setAssigneeProfile(data);
+    })();
+  }, [task?.assignee_id]);
 
   if (!task) return null;
   const canEdit = isAdmin || task.creator_id === user?.id || task.assignee_id === user?.id;
@@ -117,6 +134,16 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
               </p>
             </div>
           </div>
+
+          {assigneeProfile && (
+            <div className="rounded-lg border border-border/60 bg-card/40 p-3">
+              <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Assigned to</p>
+              <p className="mt-0.5 font-semibold">
+                {assigneeProfile.display_name ?? assigneeProfile.email.split("@")[0]}
+              </p>
+              <p className="text-xs text-muted-foreground">{assigneeProfile.email}</p>
+            </div>
+          )}
 
           {canEdit && task.status !== "completed" && (
             <>

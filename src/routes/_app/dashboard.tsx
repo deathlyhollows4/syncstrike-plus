@@ -38,7 +38,10 @@ function Dashboard() {
     if (!user) return;
     const { data } = await supabase
       .from("tasks")
-      .select("*")
+      .select(`
+        *,
+        assignee:profiles!assignee_id(display_name, email)
+      `)
       .order("scheduled_for", { ascending: true });
     setTasks((data as any) ?? []);
   };
@@ -202,9 +205,14 @@ function Dashboard() {
                           e.stopPropagation();
                           setActiveTask(t);
                         }}
-                        className={`truncate rounded px-1.5 py-0.5 text-[11px] cursor-pointer ${statusBg(t.status)}`}
+                        className={`truncate rounded px-1.5 py-0.5 text-[11px] cursor-pointer ${statusBg(t.status)} flex items-center gap-1`}
                       >
-                        {t.title}
+                        <span className="flex-1 truncate">{t.title}</span>
+                        {t.assignee_id && t.assignee_id !== user?.id && t.assignee && (
+                          <span className="bg-gold-shine/20 text-gold-shine text-[9px] px-1 rounded font-bold">
+                            {(t.assignee.display_name ?? t.assignee.email.split("@")[0]).charAt(0).toUpperCase()}
+                          </span>
+                        )}
                       </div>
                     ))}
                     {dayTasks.length > 3 && (

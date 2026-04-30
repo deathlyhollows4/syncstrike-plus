@@ -41,7 +41,7 @@ interface MemberOpt {
 }
 
 export function TaskCreateModal({ open, onOpenChange, defaultDate, onCreated }: Props) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
@@ -188,7 +188,7 @@ export function TaskCreateModal({ open, onOpenChange, defaultDate, onCreated }: 
               </Select>
             </div>
           </div>
-          {teamId !== "personal" && (
+          {teamId !== "personal" && isAdmin && (
             <div>
               <Label>Assignee</Label>
               <Select value={assigneeId} onValueChange={setAssigneeId}>

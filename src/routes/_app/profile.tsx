@@ -27,6 +27,12 @@ function ProfilePage() {
   const [savingProfile, setSavingProfile] = useState(false);
 
   const [teams, setTeams] = useState<MyTeam[]>([]);
+  const [taskStats, setTaskStats] = useState({
+    total: 0,
+    completed: 0,
+    inProgress: 0,
+    blocked: 0,
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -49,6 +55,25 @@ function ProfilePage() {
         setTeams((t as MyTeam[]) ?? []);
       } else {
         setTeams([]);
+      }
+
+      // Fetch personal task statistics
+      const { data: tasks } = await supabase
+        .from("tasks")
+        .select("status")
+        .or(`creator_id.eq.${user.id},assignee_id.eq.${user.id}`);
+      if (tasks) {
+        const stats = tasks.reduce(
+          (acc, task) => {
+            acc.total++;
+            if (task.status === "completed") acc.completed++;
+            else if (task.status === "in_progress") acc.inProgress++;
+            else if (task.status === "blocked") acc.blocked++;
+            return acc;
+          },
+          { total: 0, completed: 0, inProgress: 0, blocked: 0 }
+        );
+        setTaskStats(stats);
       }
     })();
   }, [user]);
@@ -131,6 +156,28 @@ function ProfilePage() {
             Save
           </Button>
         </form>
+      </Card>
+
+      <Card className="p-6 surface border-border/60">
+        <h2 className="font-display text-lg font-semibold">Task Analytics</h2>
+        <div className="mt-4 grid grid-cols-2 gap-4">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-gold-shine">{taskStats.total}</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Tasks</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-success">{taskStats.completed}</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Completed</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-gold-shine">{taskStats.inProgress}</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">In Progress</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-destructive">{taskStats.blocked}</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Blocked</p>
+          </div>
+        </div>
       </Card>
 
       <Card className="p-6 surface border-border/60">

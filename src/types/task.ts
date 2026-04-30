@@ -15,4 +15,8 @@ export interface Task {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  assignee?: {
+    display_name: string | null;
+    email: string;
+  } | null;
 }

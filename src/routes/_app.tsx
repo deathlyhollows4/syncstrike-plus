@@ -7,6 +7,7 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { clsx } from "clsx";
 import {
   Calendar,
   ListTodo,
@@ -77,15 +78,21 @@ function AppLayout() {
             );
           })}
           {isAdmin && (
-              <Link to="/admin" className={clsx(linkCls, pathname.startsWith("/admin") && "bg-card/60") }>
-                <Shield
-                  className={clsx("h-4 w-4 mr-3")}
-                  style={{
-                    color: pathname.startsWith("/admin") ? "var(--primary-foreground)" : "var(--gold)",
-                  }}
-                />
-                <span className="truncate">Admin</span>
-              </Link>
+            <Link
+              to="/admin"
+              className={clsx(
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition",
+                loc.pathname.startsWith("/admin") ? "bg-card/60 text-[oklch(0.16_0.02_75)]" : "text-gold-shine hover:bg-sidebar-accent/50",
+              )}
+            >
+              <Shield
+                className="h-4 w-4 mr-3"
+                style={{
+                  color: loc.pathname.startsWith("/admin") ? "var(--primary-foreground)" : "var(--gold)",
+                }}
+              />
+              <span className="truncate">Admin</span>
+            </Link>
           )}
         </nav>
         <div className="mt-4 rounded-lg border border-sidebar-border/60 bg-sidebar-accent/30 p-3">

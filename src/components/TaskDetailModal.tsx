@@ -15,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
+import { UserAvatar } from "@/components/UserAvatar";
+import { useProfiles } from "@/hooks/useProfiles";
 import type { Task } from "@/types/task";
 
 interface Props {
@@ -28,7 +30,6 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
   const [progress, setProgress] = useState(0);
   const [completionDesc, setCompletionDesc] = useState("");
   const [blockerReason, setBlockerReason] = useState("");
-  const [assigneeProfile, setAssigneeProfile] = useState<{ display_name: string | null; email: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -39,21 +40,9 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
     }
   }, [task]);
 
-  // Fetch assignee profile
-  useEffect(() => {
-    if (!task?.assignee_id) {
-      setAssigneeProfile(null);
-      return;
-    }
-    (async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("display_name, email")
-        .eq("id", task.assignee_id)
-        .maybeSingle();
-      setAssigneeProfile(data);
-    })();
-  }, [task?.assignee_id]);
+  const profilesMap = useProfiles([task?.assignee_id, task?.creator_id]);
+  const assigneeProfile = task?.assignee_id ? profilesMap[task.assignee_id] ?? null : null;
+  const creatorProfile = task?.creator_id ? profilesMap[task.creator_id] ?? null : null;
 
   if (!task) return null;
   const canEdit = isAdmin || task.creator_id === user?.id || task.assignee_id === user?.id;
@@ -136,12 +125,36 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
           </div>
 
           {assigneeProfile && (
-            <div className="rounded-lg border border-border/60 bg-card/40 p-3">
-              <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Assigned to</p>
-              <p className="mt-0.5 font-semibold">
-                {assigneeProfile.display_name ?? assigneeProfile.email.split("@")[0]}
-              </p>
-              <p className="text-xs text-muted-foreground">{assigneeProfile.email}</p>
+            <div className="rounded-lg border border-border/60 bg-card/40 p-3 flex items-center gap-3">
+              <UserAvatar
+                url={assigneeProfile.avatar_url}
+                name={assigneeProfile.display_name}
+                email={assigneeProfile.email}
+                size="sm"
+              />
+              <div className="min-w-0">
+                <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Assigned to</p>
+                <p className="font-semibold truncate">
+                  {assigneeProfile.display_name ?? assigneeProfile.email.split("@")[0]}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {creatorProfile && (
+            <div className="rounded-lg border border-border/60 bg-card/40 p-3 flex items-center gap-3">
+              <UserAvatar
+                url={creatorProfile.avatar_url}
+                name={creatorProfile.display_name}
+                email={creatorProfile.email}
+                size="sm"
+              />
+              <div className="min-w-0">
+                <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Created by</p>
+                <p className="font-semibold truncate">
+                  {creatorProfile.display_name ?? creatorProfile.email.split("@")[0]}
+                </p>
+              </div>
             </div>
           )}
 

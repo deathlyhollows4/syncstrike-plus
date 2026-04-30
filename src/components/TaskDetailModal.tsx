@@ -49,7 +49,7 @@ export function TaskDetailModal({ task, onOpenChange, onChanged }: Props) {
       const { data } = await supabase
         .from("profiles")
         .select("display_name, email")
-        .eq("id", task.assignee_id)
+        .eq("id", task.assignee_id as string)
         .maybeSingle();
       setAssigneeProfile(data);
     })();

@@ -84,18 +84,15 @@ function AppLayout() {
               to="/admin"
               className={clsx(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition",
-                loc.pathname.startsWith("/admin") ? "bg-card/60 text-[oklch(0.16_0.02_75)]" : "text-gold-shine hover:bg-sidebar-accent/50",
+                loc.pathname.startsWith("/admin")
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
               )}
             >
-              <Shield
-                className="h-4 w-4 mr-3"
-                style={{
-                  color: loc.pathname.startsWith("/admin") ? "var(--primary-foreground)" : "var(--gold)",
-                }}
-              />
+              <Shield className="h-4 w-4" />
               <span className="truncate">Admin</span>
             </Link>
-          )}
+          ))
         </nav>
         <div className="mt-4 rounded-lg border border-sidebar-border/60 bg-sidebar-accent/30 p-3">
           <div className="flex items-center gap-2.5">

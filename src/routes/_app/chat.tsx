@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UserAvatar } from "@/components/UserAvatar";
 
 interface ChatTeam {
   id: string;
@@ -25,6 +26,7 @@ interface Profile {
   id: string;
   email: string;
   display_name: string | null;
+  avatar_url: string | null;
 }
 
 export const Route = createFileRoute("/_app/chat")({
@@ -81,7 +83,7 @@ function ChatPage() {
       if (ids.length) {
         const { data: ps } = await supabase
           .from("profiles")
-          .select("id, email, display_name")
+          .select("id, email, display_name, avatar_url")
           .in("id", ids);
         const map: Record<string, Profile> = {};
         (ps ?? []).forEach((p: any) => {

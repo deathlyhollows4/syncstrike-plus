@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UserAvatar } from "@/components/UserAvatar";
 import { format } from "date-fns";
 
 export const Route = createFileRoute("/_app/admin")({ component: AdminPage });
@@ -17,6 +18,7 @@ interface Row {
   id: string;
   email: string;
   display_name: string | null;
+  avatar_url: string | null;
   is_blocked: boolean;
   created_at: string;
   role: "admin" | "team_member" | null;
@@ -43,7 +45,7 @@ function AdminPage() {
       { count: bcount },
       { count: teamCount },
     ] = await Promise.all([
-      supabase.from("profiles").select("id, email, display_name, is_blocked, created_at"),
+      supabase.from("profiles").select("id, email, display_name, avatar_url, is_blocked, created_at"),
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("tasks").select("*", { count: "exact", head: true }),
       supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "blocked"),
@@ -203,8 +205,20 @@ function AdminPage() {
                 {filtered.map((r) => (
                   <tr key={r.id} className="hover:bg-accent/20">
                     <td className="p-3">
-                      <p className="font-medium">{r.display_name ?? r.email.split("@")[0]}</p>
-                      <p className="text-xs text-muted-foreground">{r.email}</p>
+                      <div className="flex items-center gap-3">
+                        <UserAvatar
+                          url={r.avatar_url}
+                          name={r.display_name}
+                          email={r.email}
+                          size="sm"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">
+                            {r.display_name ?? r.email.split("@")[0]}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="p-3">
                       <Badge

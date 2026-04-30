@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UserAvatar } from "@/components/UserAvatar";
 
 interface ChatTeam {
   id: string;
@@ -25,6 +26,7 @@ interface Profile {
   id: string;
   email: string;
   display_name: string | null;
+  avatar_url: string | null;
 }
 
 export const Route = createFileRoute("/_app/chat")({
@@ -81,7 +83,7 @@ function ChatPage() {
       if (ids.length) {
         const { data: ps } = await supabase
           .from("profiles")
-          .select("id, email, display_name")
+          .select("id, email, display_name, avatar_url")
           .in("id", ids);
         const map: Record<string, Profile> = {};
         (ps ?? []).forEach((p: any) => {
@@ -111,7 +113,7 @@ function ChatPage() {
           if (!profiles[m.sender_id]) {
             const { data } = await supabase
               .from("profiles")
-              .select("id, email, display_name")
+              .select("id, email, display_name, avatar_url")
               .eq("id", m.sender_id)
               .maybeSingle();
             if (data) setProfiles((prev) => ({ ...prev, [m.sender_id]: data as Profile }));
@@ -218,12 +220,23 @@ function ChatPage() {
                     messages.map((m) => {
                       const mine = m.sender_id === user?.id;
                       const p = profiles[m.sender_id];
-                      const name = p?.display_name ?? p?.email?.split("@")[0] ?? "Unknown";
+                      const name =
+                        p?.display_name ??
+                        p?.email?.split("@")[0] ??
+                        `User ${m.sender_id.slice(0, 6)}`;
                       return (
                         <div
                           key={m.id}
-                          className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                          className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}
                         >
+                          {!mine && (
+                            <UserAvatar
+                              url={p?.avatar_url}
+                              name={p?.display_name}
+                              email={p?.email}
+                              size="sm"
+                            />
+                          )}
                           <div
                             className={`max-w-[75%] rounded-2xl px-4 py-2 ${
                               mine

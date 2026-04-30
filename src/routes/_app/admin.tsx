@@ -17,6 +17,7 @@ interface Row {
   id: string;
   email: string;
   display_name: string | null;
+  avatar_url: string | null;
   is_blocked: boolean;
   created_at: string;
   role: "admin" | "team_member" | null;
@@ -43,7 +44,7 @@ function AdminPage() {
       { count: bcount },
       { count: teamCount },
     ] = await Promise.all([
-      supabase.from("profiles").select("id, email, display_name, is_blocked, created_at"),
+      supabase.from("profiles").select("id, email, display_name, avatar_url, is_blocked, created_at"),
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("tasks").select("*", { count: "exact", head: true }),
       supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "blocked"),

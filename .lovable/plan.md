@@ -1,65 +1,50 @@
-# Bug Fixes, Security Hardening & Avatar Feature
+## Status check (good news)
 
-## 1. Avatar feature (end-to-end)
+Your database is fully intact — nothing was deleted:
 
-Today the user can save `avatar_url` on the profile page, but the image is not displayed anywhere. I will wire it through every place a user is identified.
+| Table | Rows |
+|---|---|
+| profiles | 5 |
+| user_roles | 5 (1 admin) |
+| tasks | 11 |
+| teams | 1 |
+| chat_messages, notifications, team_members | present |
 
-**A reusable `<UserAvatar>` component** (`src/components/UserAvatar.tsx`) built on the existing shadcn `Avatar` primitive:
-- Props: `url`, `name`, `email`, `size` (`sm | md | lg`).
-- Shows `<AvatarImage>` when `url` is set, otherwise `<AvatarFallback>` with the first letter of name/email on the gold gradient (matching current sidebar style).
+All tables, RLS policies, triggers, and security-definer functions from previous migrations are still in place. The previous security migration that errored out (500 from the type-generator) was rolled back — so no changes were applied either way. The admin page source (`src/routes/_app/admin.tsx`) and the sidebar Admin link (`src/routes/_app.tsx`) are also still in the codebase.
 
-**A small `useProfiles(ids)` hook** (`src/hooks/useProfiles.ts`) that batch-fetches `id, display_name, avatar_url, email` from `profiles` and caches them in a module-level Map so chat / tasks / admin don't refetch the same user repeatedly.
+## Why "admin page is not showing"
 
-**Wire-up locations:**
-- `src/routes/_app.tsx` — sidebar user card + header (replace the hand-rolled gold initial circle).
-- `src/routes/_app/profile.tsx` — preview avatar above the form; show live preview as user edits the URL.
-- `src/routes/_app/chat.tsx` — message bubbles (left of each message, sized `sm`).
-- `src/routes/_app/teams.tsx` — member rows.
-- `src/routes/_app/admin.tsx` — user table "User" column.
-- `src/components/TaskDetailModal.tsx` — assignee + creator rows.
-- `src/components/TaskCreateModal.tsx` — assignee dropdown options.
+The admin route is gated by `isAdmin` from `AuthContext`. There are two real failure modes I want to harden:
 
-**Validation:** in `saveProfile`, accept only `https://…` URLs (or empty) and cap at 500 chars before sending to Supabase. Show a toast for invalid input.
+1. **Race condition on first load** — `AuthContext.fetchRole` sets `loading=false` only inside the initial `getSession()` resolver. If the `onAuthStateChange` listener fires first (which often happens on hard refresh of `/admin`), `loading` can stay `true` indefinitely → admin page stuck on the skeleton, sidebar Admin link never appears.
+2. **Block-status check failure** — `fetchRole` reads `profiles.is_blocked`. If that read fails (e.g. transient network hiccup, RLS edge case), it currently silently returns and `role` stays `null` forever, hiding the Admin link permanently for that session.
 
-## 2. Bug fixes
+## Plan
 
-- **Profile search-param bypass:** `profile.tsx` reads `window.location.search` directly, which breaks SSR and is flagged by the scanner. Switch to `validateSearch` on the route declaring `{ id?: string }` and read it via `Route.useSearch()`. Validate the ID looks like a UUID before querying.
-- **TaskDetailModal:** also fetch + show the *creator* profile (currently only assignee), and use `<UserAvatar>`.
-- **Avatar input UX:** trim whitespace, normalize empty string → `null`, and show a tiny inline preview under the input.
-- **Chat sender fallback:** when a profile fetch fails, current code shows "Unknown". Fall back to a shortened user-id so messages aren't ambiguous in dev.
-- **Admin route:** confirm the loading-skeleton fix from the previous turn is still in place (verified) and that non-admins are redirected before any admin query fires.
+### 1. Fix `AuthContext` so role + loading always resolve
+- Make `fetchRole` resilient: on any error, fall back to reading `user_roles` directly and clear `loading` regardless.
+- Always set `loading=false` after the first auth event (listener OR `getSession`), whichever wins the race — not only inside `getSession().then()`.
+- Re-fetch role on `SIGNED_IN` / `TOKEN_REFRESHED` events so a freshly promoted user sees the Admin link without re-login.
 
-## 3. Security findings (from latest scan)
+### 2. Re-apply the security hardening (the previous attempt errored on type generation, not SQL)
+Same migration as last turn, in one shot:
+- **Profiles INSERT policy** — only `id = auth.uid()` (closes spoofing).
+- **Length CHECK constraints** on `chat_messages.body`, `tasks.title/description/completion_description/blocker_reason`, `profiles.display_name/avatar_url/email`.
+- **Trigger** `profiles_lock_sensitive_fields` — non-admins cannot change `is_blocked`, `email`, or `id` on any profile (closes the privilege-escalation finding).
 
-I'll fix the items that have a clear, low-risk remediation; the rest get documented in the security memory with rationale.
+### 3. Quick sanity sweep (no behavioral changes)
+- Verify `/admin` route file naming matches `src/routes/_app/admin.tsx` (it does).
+- Verify the Admin sidebar link renders only when `isAdmin === true` (it does).
+- Add a tiny "Refresh role" affordance is **not** needed; the listener fix covers it.
 
-**Will fix via SQL migration:**
+## Files touched
 
-- **Blocked users can update their own profile** — add `AND NOT public.is_blocked(auth.uid())` to the `users update own profile` policy on `profiles` (USING + WITH CHECK).
-- **Blocked users can delete their own notifications** — add `AND NOT public.is_blocked(auth.uid())` to the recipient branch of `recipient or admin deletes` on `notifications`.
-- **`SECURITY DEFINER` functions executable by anon/authenticated** — `REVOKE EXECUTE … FROM PUBLIC, anon` on `has_role`, `is_admin`, `is_team_member`, `is_blocked`. They are only called from RLS policies and triggers (which run as the function owner), so revoking public EXECUTE is safe and silences 10 of 16 findings. Trigger-only helpers (`handle_new_user`, `tasks_validate`, `tasks_lock_creator`, `notifications_lock_fields`, `notify_on_blocker`, `notify_on_task_blocked`) get `REVOKE EXECUTE FROM PUBLIC, anon, authenticated`.
+- `src/context/AuthContext.tsx` — robust role + loading handling
+- New SQL migration — INSERT policy, length checks, sensitive-field trigger
 
-**Will document as accepted risk in `security--update_memory`:**
+## What you'll see after
 
-- **Session in `localStorage` (`SESSION_LOCALSTORAGE`)** — switching to HttpOnly cookies requires a custom server-side auth bridge that's out of scope for this round. Mitigations already in place: strict React (no `dangerouslySetInnerHTML`), no third-party script tags, RLS on every table.
-- **Missing CSP / security headers (`NO_CSP_SECURITY_HEADERS`)** — would require adding TanStack Start middleware; can be tackled as its own task. Documenting current posture.
-- **Auth checks in `useEffect` (`ROUTE_ONLY_AUTH_CLIENT_SIDE`)** — moving to `beforeLoad` requires plumbing the auth context into the router context, which is a larger refactor touching `__root.tsx`, `router.tsx`, and every protected route. Will note as a follow-up; current pattern still enforces RLS server-side, so data is never actually exposed — only a brief flash of empty UI.
-
-I'll also call `security--manage_security_finding` with `mark_as_fixed` for the two RLS findings and the SECURITY DEFINER findings.
-
-## 4. Republish
-
-After verification, surface a publish action so you can push the changes live.
-
-## Out of scope (will mention but not do)
-
-- HttpOnly cookie auth migration.
-- Global CSP/security-header middleware.
-- Migrating all auth guards from `useEffect` to `beforeLoad`.
-- File uploads for avatars (still URL-based per current schema; Cloud storage bucket would be a separate feature).
-
-## Technical summary
-
-- **New files:** `src/components/UserAvatar.tsx`, `src/hooks/useProfiles.ts`, one new SQL migration under `supabase/migrations/`.
-- **Edited files:** `src/routes/_app.tsx`, `src/routes/_app/profile.tsx`, `src/routes/_app/chat.tsx`, `src/routes/_app/teams.tsx`, `src/routes/_app/admin.tsx`, `src/components/TaskDetailModal.tsx`, `src/components/TaskCreateModal.tsx`.
-- **Tools called after edits:** `security--manage_security_finding` (mark_as_fixed × findings above), `security--update_memory` (record accepted risks).
+- Admin link reliably appears in the sidebar on every refresh for the admin user.
+- `/admin` loads the dashboard with all 5 users, 11 tasks, 1 team.
+- All three open security findings flip to fixed.
+- No data loss anywhere — your existing tasks, users, teams, and chats remain.

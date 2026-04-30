@@ -12,7 +12,26 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/UserAvatar";
 import { format } from "date-fns";
 
-export const Route = createFileRoute("/_app/admin")({ component: AdminPage });
+export const Route = createFileRoute("/_app/admin")({
+  component: AdminPage,
+  beforeLoad: async () => {
+    // Server-side guard: verify the caller actually has the admin role before
+    // any admin UI is rendered. RLS still protects every mutation, but this
+    // prevents non-admins from briefly seeing the admin shell.
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { redirect } = await import("@tanstack/react-router");
+    const { data: sess } = await supabase.auth.getSession();
+    const uid = sess.session?.user?.id;
+    if (!uid) throw redirect({ to: "/login" });
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", uid);
+    if (!roles?.some((r) => r.role === "admin")) {
+      throw redirect({ to: "/dashboard" });
+    }
+  },
+});
 
 interface Row {
   id: string;

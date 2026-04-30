@@ -14,9 +14,11 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
         ...(!SUPABASE_URL ? ["SUPABASE_URL"] : []),
         ...(!SUPABASE_PUBLISHABLE_KEY ? ["SUPABASE_PUBLISHABLE_KEY"] : []),
       ];
-      const message = `Missing Supabase environment variable(s): ${missing.join(", ")}. Connect Supabase in Lovable Cloud.`;
-      console.error(`[Supabase] ${message}`);
-      throw new Response(message, { status: 500 });
+      // Log details server-side only; never echo env var names to the client.
+      console.error(
+        `[Supabase] Missing environment variable(s): ${missing.join(", ")}. Connect Supabase in Lovable Cloud.`,
+      );
+      throw new Response("Service temporarily unavailable", { status: 500 });
     }
 
     const request = getRequest();

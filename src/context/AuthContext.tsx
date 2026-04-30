@@ -74,17 +74,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        // defer to avoid deadlock inside callback
         const uid = s.user.id;
-        setTimeout(() => fetchRole(uid), 0);
+        // Re-resolve role on sign-in / token refresh / initial session.
+        if (
+          event === "SIGNED_IN" ||
+          event === "TOKEN_REFRESHED" ||
+          event === "INITIAL_SESSION" ||
+          event === "USER_UPDATED"
+        ) {
+          setTimeout(() => fetchRole(uid), 0);
+        }
       } else {
         setRole(null);
         clearLoading();
-      }
-      // Safety: regardless of role outcome, never leave loading=true forever.
-      if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "SIGNED_OUT") {
-        // fetchRole clears loading on success/failure; this guards the no-user case.
-        if (!s?.user) clearLoading();
       }
     });
 

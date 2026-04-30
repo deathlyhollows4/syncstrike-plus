@@ -325,34 +325,40 @@ function TeamsPage() {
                       const p = profiles[m.user_id];
                       const isOwner = m.user_id === selected.owner_id;
                       return (
-                        <li
-                          key={m.id}
-                          className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/40 px-3 py-2"
-                        >
-                          <div className="h-8 w-8 rounded-full bg-gold-shine/20 flex items-center justify-center text-xs font-bold text-gold-shine">
-                            {(p?.display_name ?? p?.email ?? "?")[0].toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {p?.display_name ?? p?.email?.split("@")[0] ?? "Unknown"}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">{p?.email}</p>
-                          </div>
-                          {isOwner && (
-                            <Badge className="bg-gold-shine/20 text-gold-shine border-gold-shine/40">
-                              Owner
-                            </Badge>
-                          )}
-                          {isAdmin && !isOwner && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => removeMember(m)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                        <li key={m.id}>
+                          <Link
+                            to="/profile"
+                            search={{ id: p?.id } as any}
+                            className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/40 px-3 py-2"
+                          >
+                            <div className="h-8 w-8 rounded-full bg-gold-shine/20 flex items-center justify-center text-xs font-bold text-gold-shine">
+                              {(p?.display_name ?? p?.email ?? "?")[0].toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {p?.display_name ?? p?.email?.split("@")[0] ?? "Unknown"}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">{p?.email}</p>
+                            </div>
+                            {isOwner && (
+                              <Badge className="bg-gold-shine/20 text-gold-shine border-gold-shine/40">
+                                Owner
+                              </Badge>
+                            )}
+                            {isAdmin && !isOwner && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  removeMember(m);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </Link>
                         </li>
                       );
                     })}

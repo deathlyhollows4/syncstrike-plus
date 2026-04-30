@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
+    "start:local": "npm install && npm run dev",
+    "test:rls": "npx ts-node-esm scripts/test-rls.ts",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",

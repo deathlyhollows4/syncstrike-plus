@@ -36,14 +36,33 @@ function Dashboard() {
 
   const loadTasks = async () => {
     if (!user) return;
+    // Select explicit columns to avoid accidental payload shape changes
     const { data } = await supabase
       .from("tasks")
-      .select(`
-        *,
-        assignee:profiles!assignee_id(display_name, email)
-      `)
+      .select(
+        "id,title,status,priority,progress,deadline,scheduled_for,creator_id,assignee_id,team_id,completion_description,blocker_reason,completed_at,created_at,updated_at",
+      )
       .order("scheduled_for", { ascending: true });
-    setTasks((data as any) ?? []);
+    const tasks = (data as any) ?? [];
+
+    // Fetch assignee profiles for display (exclude current user)
+    const assigneeIds = Array.from(
+      new Set(tasks.map((t: any) => t.assignee_id).filter(Boolean).filter((id: any) => id !== user?.id)),
+    );
+    const profileMap = new Map<string, any>();
+    if (assigneeIds.length) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, display_name, email")
+        .in("id", assigneeIds as any[]);
+      (profiles ?? []).forEach((p: any) => profileMap.set(p.id, p));
+    }
+
+    const tasksWithAssignee = tasks.map((t: any) => ({
+      ...t,
+      assignee: t.assignee_id ? profileMap.get(t.assignee_id) ?? null : null,
+    }));
+    setTasks(tasksWithAssignee);
   };
 
   useEffect(() => {

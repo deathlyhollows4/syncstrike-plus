@@ -21,6 +21,8 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { Logo } from "@/components/Logo";
 import { NotificationBell } from "@/components/NotificationBell";
+import { UserAvatar } from "@/components/UserAvatar";
+import { useProfile } from "@/hooks/useProfiles";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 

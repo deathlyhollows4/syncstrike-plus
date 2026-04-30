@@ -1,65 +1,74 @@
-# Bug Fixes, Security Hardening & Avatar Feature
+## Goal
 
-## 1. Avatar feature (end-to-end)
+Close the overly-permissive Realtime topic policy that lets any authenticated user subscribe to any `tasks%` / `tasks-%` topic on `realtime.messages`. The fix is database-only — the app does not need code changes.
 
-Today the user can save `avatar_url` on the profile page, but the image is not displayed anywhere. I will wire it through every place a user is identified.
+## Why this is safe to tighten
 
-**A reusable `<UserAvatar>` component** (`src/components/UserAvatar.tsx`) built on the existing shadcn `Avatar` primitive:
-- Props: `url`, `name`, `email`, `size` (`sm | md | lg`).
-- Shows `<AvatarImage>` when `url` is set, otherwise `<AvatarFallback>` with the first letter of name/email on the gold gradient (matching current sidebar style).
+Every `supabase.channel(...)` call in the app uses `postgres_changes` events:
 
-**A small `useProfiles(ids)` hook** (`src/hooks/useProfiles.ts`) that batch-fetches `id, display_name, avatar_url, email` from `profiles` and caches them in a module-level Map so chat / tasks / admin don't refetch the same user repeatedly.
+```text
+src/routes/_app/teams.tsx          channel("teams-rt")        postgres_changes on teams + team_members
+src/routes/_app/tasks.tsx          channel("tasks-list-rt")   postgres_changes on tasks
+src/routes/_app/dashboard.tsx      channel("tasks-rt")        postgres_changes on tasks
+src/routes/_app/chat.tsx           channel(`chat-${teamId}`)  postgres_changes on chat_messages
+src/components/NotificationBell    channel(`notif-${userId}`) postgres_changes on notifications
+```
 
-**Wire-up locations:**
-- `src/routes/_app.tsx` — sidebar user card + header (replace the hand-rolled gold initial circle).
-- `src/routes/_app/profile.tsx` — preview avatar above the form; show live preview as user edits the URL.
-- `src/routes/_app/chat.tsx` — message bubbles (left of each message, sized `sm`).
-- `src/routes/_app/teams.tsx` — member rows.
-- `src/routes/_app/admin.tsx` — user table "User" column.
-- `src/components/TaskDetailModal.tsx` — assignee + creator rows.
-- `src/components/TaskCreateModal.tsx` — assignee dropdown options.
+`postgres_changes` payloads are filtered server-side by each table's regular RLS policies (already correct: tasks SELECT requires creator/assignee/team-member/admin, notifications SELECT requires recipient, chat requires team membership, etc.). They do NOT depend on the `realtime.messages` topic policy.
 
-**Validation:** in `saveProfile`, accept only `https://…` URLs (or empty) and cap at 500 chars before sending to Supabase. Show a toast for invalid input.
+The `realtime.messages` topic policy only matters for **broadcast** and **presence** events, which the app does not use. So we can remove the broad `tasks%` / `tasks-%` allowances without breaking any feature.
 
-## 2. Bug fixes
+## Database migration
 
-- **Profile search-param bypass:** `profile.tsx` reads `window.location.search` directly, which breaks SSR and is flagged by the scanner. Switch to `validateSearch` on the route declaring `{ id?: string }` and read it via `Route.useSearch()`. Validate the ID looks like a UUID before querying.
-- **TaskDetailModal:** also fetch + show the *creator* profile (currently only assignee), and use `<UserAvatar>`.
-- **Avatar input UX:** trim whitespace, normalize empty string → `null`, and show a tiny inline preview under the input.
-- **Chat sender fallback:** when a profile fetch fails, current code shows "Unknown". Fall back to a shortened user-id so messages aren't ambiguous in dev.
-- **Admin route:** confirm the loading-skeleton fix from the previous turn is still in place (verified) and that non-admins are redirected before any admin query fires.
+Replace the `syncstrike realtime read` and `syncstrike realtime write` policies on `realtime.messages` so that:
 
-## 3. Security findings (from latest scan)
+- Admins keep full access.
+- Per-user notification topic stays allowed: `notifications:<auth.uid()>`.
+- Team chat topic stays allowed: `chat:<team_id>` only when `is_team_member(auth.uid(), team_id)`.
+- Tasks topics are scoped: only `tasks:user:<auth.uid()>` (own bucket) or `tasks:team:<team_id>` (only when the user is a member of that team) are allowed. Plain `tasks%` / `tasks-%` wildcards are removed.
+- Anything else falls through to deny.
 
-I'll fix the items that have a clear, low-risk remediation; the rest get documented in the security memory with rationale.
+```sql
+DROP POLICY IF EXISTS "syncstrike realtime read"  ON realtime.messages;
+DROP POLICY IF EXISTS "syncstrike realtime write" ON realtime.messages;
 
-**Will fix via SQL migration:**
+CREATE POLICY "syncstrike realtime read" ON realtime.messages
+  FOR SELECT TO authenticated
+  USING (
+    public.is_admin(auth.uid())
+    OR realtime.topic() = 'notifications:' || auth.uid()::text
+    OR realtime.topic() = 'tasks:user:'    || auth.uid()::text
+    OR (
+      realtime.topic() LIKE 'tasks:team:%'
+      AND public.is_team_member(
+        auth.uid(),
+        NULLIF(split_part(realtime.topic(), ':', 3), '')::uuid
+      )
+    )
+    OR (
+      realtime.topic() LIKE 'chat:%'
+      AND public.is_team_member(
+        auth.uid(),
+        NULLIF(split_part(realtime.topic(), ':', 2), '')::uuid
+      )
+    )
+  );
 
-- **Blocked users can update their own profile** — add `AND NOT public.is_blocked(auth.uid())` to the `users update own profile` policy on `profiles` (USING + WITH CHECK).
-- **Blocked users can delete their own notifications** — add `AND NOT public.is_blocked(auth.uid())` to the recipient branch of `recipient or admin deletes` on `notifications`.
-- **`SECURITY DEFINER` functions executable by anon/authenticated** — `REVOKE EXECUTE … FROM PUBLIC, anon` on `has_role`, `is_admin`, `is_team_member`, `is_blocked`. They are only called from RLS policies and triggers (which run as the function owner), so revoking public EXECUTE is safe and silences 10 of 16 findings. Trigger-only helpers (`handle_new_user`, `tasks_validate`, `tasks_lock_creator`, `notifications_lock_fields`, `notify_on_blocker`, `notify_on_task_blocked`) get `REVOKE EXECUTE FROM PUBLIC, anon, authenticated`.
+-- Mirror the same predicate for INSERT (broadcast send / presence track).
+CREATE POLICY "syncstrike realtime write" ON realtime.messages
+  FOR INSERT TO authenticated
+  WITH CHECK ( /* same expression as above */ );
+```
 
-**Will document as accepted risk in `security--update_memory`:**
+## Security findings
 
-- **Session in `localStorage` (`SESSION_LOCALSTORAGE`)** — switching to HttpOnly cookies requires a custom server-side auth bridge that's out of scope for this round. Mitigations already in place: strict React (no `dangerouslySetInnerHTML`), no third-party script tags, RLS on every table.
-- **Missing CSP / security headers (`NO_CSP_SECURITY_HEADERS`)** — would require adding TanStack Start middleware; can be tackled as its own task. Documenting current posture.
-- **Auth checks in `useEffect` (`ROUTE_ONLY_AUTH_CLIENT_SIDE`)** — moving to `beforeLoad` requires plumbing the auth context into the router context, which is a larger refactor touching `__root.tsx`, `router.tsx`, and every protected route. Will note as a follow-up; current pattern still enforces RLS server-side, so data is never actually exposed — only a brief flash of empty UI.
+- Mark `realtime_tasks_channel_open` as fixed with explanation referencing the new tightly-scoped topic policy and the fact that all live data flow uses `postgres_changes`, which is already filtered by table RLS.
+- Update the security memory to record that Realtime topic ACL is the deny-by-default kind: only `notifications:<uid>`, `tasks:user:<uid>`, `tasks:team:<team_id>` (member only), and `chat:<team_id>` (member only) are allowed; admins bypass.
 
-I'll also call `security--manage_security_finding` with `mark_as_fixed` for the two RLS findings and the SECURITY DEFINER findings.
+## Files touched
 
-## 4. Republish
+- New migration: `supabase/migrations/<timestamp>_realtime_scope_tasks_topics.sql`
+- `manage_security_finding` → mark fixed
+- `update_memory` → refresh security notes
 
-After verification, surface a publish action so you can push the changes live.
-
-## Out of scope (will mention but not do)
-
-- HttpOnly cookie auth migration.
-- Global CSP/security-header middleware.
-- Migrating all auth guards from `useEffect` to `beforeLoad`.
-- File uploads for avatars (still URL-based per current schema; Cloud storage bucket would be a separate feature).
-
-## Technical summary
-
-- **New files:** `src/components/UserAvatar.tsx`, `src/hooks/useProfiles.ts`, one new SQL migration under `supabase/migrations/`.
-- **Edited files:** `src/routes/_app.tsx`, `src/routes/_app/profile.tsx`, `src/routes/_app/chat.tsx`, `src/routes/_app/teams.tsx`, `src/routes/_app/admin.tsx`, `src/components/TaskDetailModal.tsx`, `src/components/TaskCreateModal.tsx`.
-- **Tools called after edits:** `security--manage_security_finding` (mark_as_fixed × findings above), `security--update_memory` (record accepted risks).
+No frontend changes, no new edge functions, no schema changes.

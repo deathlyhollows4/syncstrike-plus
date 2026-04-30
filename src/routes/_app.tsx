@@ -16,12 +16,11 @@ import {
   MessageSquare,
   Shield,
   LogOut,
+  User as UserIcon,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Logo } from "@/components/Logo";
 import { NotificationBell } from "@/components/NotificationBell";
-import { UserAvatar } from "@/components/UserAvatar";
-import { useProfile } from "@/hooks/useProfiles";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -41,7 +40,6 @@ function AppLayout() {
   const { user, loading, role, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const loc = useLocation();
-  const profile = useProfile(user?.id);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
@@ -99,16 +97,11 @@ function AppLayout() {
         </nav>
         <div className="mt-4 rounded-lg border border-sidebar-border/60 bg-sidebar-accent/30 p-3">
           <div className="flex items-center gap-2.5">
-            <UserAvatar
-              url={profile?.avatar_url}
-              name={profile?.display_name}
-              email={user.email}
-              size="sm"
-            />
+            <div className="h-8 w-8 rounded-full bg-gold-shine flex items-center justify-center text-[oklch(0.16_0.02_75)] font-bold text-sm">
+              {(user.email ?? "?")[0].toUpperCase()}
+            </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium">
-                {profile?.display_name ?? user.email}
-              </p>
+              <p className="truncate text-xs font-medium">{user.email}</p>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 {role ?? "loading…"}
               </p>
@@ -136,13 +129,8 @@ function AppLayout() {
             <div className="flex items-center gap-1">
               <NotificationBell />
               <Link to="/profile">
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <UserAvatar
-                    url={profile?.avatar_url}
-                    name={profile?.display_name}
-                    email={user.email}
-                    size="sm"
-                  />
+                <Button variant="ghost" size="icon">
+                  <UserIcon className="h-5 w-5" />
                 </Button>
               </Link>
             </div>

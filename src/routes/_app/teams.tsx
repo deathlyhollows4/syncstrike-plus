@@ -29,7 +29,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { UserAvatar } from "@/components/UserAvatar";
 import { format } from "date-fns";
 
 export const Route = createFileRoute("/_app/teams")({ component: TeamsPage });
@@ -51,7 +50,6 @@ interface Profile {
   id: string;
   email: string;
   display_name: string | null;
-  avatar_url: string | null;
 }
 
 function TeamsPage() {
@@ -85,7 +83,7 @@ function TeamsPage() {
       if (userIds.length) {
         const { data: p } = await supabase
           .from("profiles")
-          .select("id, email, display_name, avatar_url")
+          .select("id, email, display_name")
           .in("id", userIds);
         const map: Record<string, Profile> = {};
         (p ?? []).forEach((x: any) => {
@@ -333,12 +331,9 @@ function TeamsPage() {
                             search={{ id: p?.id } as any}
                             className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/40 px-3 py-2"
                           >
-                            <UserAvatar
-                              url={p?.avatar_url}
-                              name={p?.display_name}
-                              email={p?.email}
-                              size="sm"
-                            />
+                            <div className="h-8 w-8 rounded-full bg-gold-shine/20 flex items-center justify-center text-xs font-bold text-gold-shine">
+                              {(p?.display_name ?? p?.email ?? "?")[0].toUpperCase()}
+                            </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">
                                 {p?.display_name ?? p?.email?.split("@")[0] ?? "Unknown"}
@@ -518,7 +513,7 @@ function AddMemberDialog({
       }
       const { data } = await supabase
         .from("profiles")
-        .select("id, email, display_name, avatar_url")
+        .select("id, email, display_name")
         .or(`email.ilike.%${q}%,display_name.ilike.%${q}%`)
         .limit(10);
       setResults((data as Profile[]) ?? []);
@@ -564,12 +559,6 @@ function AddMemberDialog({
                 const already = existingMemberIds.includes(p.id);
                 return (
                   <div key={p.id} className="flex items-center gap-3 p-3">
-                    <UserAvatar
-                      url={p.avatar_url}
-                      name={p.display_name}
-                      email={p.email}
-                      size="sm"
-                    />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">
                         {p.display_name ?? p.email.split("@")[0]}

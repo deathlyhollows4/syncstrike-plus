@@ -17,14 +17,21 @@ export const Route = createFileRoute("/_app/tasks")({ component: TasksPage });
 function TasksPage() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [teams, setTeams] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<"all"|"pending"|"in_progress"|"completed"|"blocked">("all");
   const [q, setQ] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [active, setActive] = useState<Task | null>(null);
 
   const load = async () => {
-    const { data } = await supabase.from("tasks").select("*").order("created_at", { ascending: false });
+    const [{ data }, { data: t }] = await Promise.all([
+      supabase.from("tasks").select("*").order("created_at", { ascending: false }),
+      supabase.from("teams").select("id, name"),
+    ]);
     setTasks((data as any) ?? []);
+    const map: Record<string, string> = {};
+    (t ?? []).forEach((x: any) => { map[x.id] = x.name; });
+    setTeams(map);
   };
   useEffect(() => { load(); }, [user]);
   useEffect(() => {
@@ -83,6 +90,11 @@ function TasksPage() {
                     {t.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{t.description}</p>}
                   </div>
                   <Badge variant="outline" className="capitalize text-[10px] hidden sm:inline-flex">{t.priority}</Badge>
+                  {t.team_id && teams[t.team_id] && (
+                    <Badge variant="outline" className="text-[10px] hidden md:inline-flex border-gold-shine/30 text-gold-shine">
+                      {teams[t.team_id]}
+                    </Badge>
+                  )}
                   {t.deadline && (
                     <span className="text-xs text-muted-foreground hidden md:inline">
                       {format(new Date(t.deadline), "MMM d")}

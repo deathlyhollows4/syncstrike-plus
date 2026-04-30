@@ -92,7 +92,7 @@ function AppLayout() {
               <Shield className="h-4 w-4" />
               <span className="truncate">Admin</span>
             </Link>
-          ))
+          )}
         </nav>
         <div className="mt-4 rounded-lg border border-sidebar-border/60 bg-sidebar-accent/30 p-3">
           <div className="flex items-center gap-2.5">

@@ -75,9 +75,6 @@ export const Route = createRootRoute({
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
-        media: "print",
-        // @ts-expect-error - swap to all on load
-        onLoad: "this.media='all'",
       },
     ],
   }),
